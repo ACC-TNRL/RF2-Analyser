@@ -485,13 +485,18 @@ function showApp(){
 function logSession(action,extra){
   if(!currentUser)return;
   const data={
-    user:currentUser.displayName||currentUser.email||'unknown',
-    email:currentUser.email||'',
     action:action,
     time:new Date().toISOString()
   };
   if(extra)Object.assign(data,extra);
-  db.collection('activity').add(data).catch(()=>{});
+  const uid=currentUser.uid;
+  const name=currentUser.displayName||currentUser.email||'unknown';
+  // Update user doc with last seen
+  db.collection('users').doc(uid).set({
+    name:name,email:currentUser.email||'',lastSeen:new Date().toISOString()
+  },{merge:true}).catch(()=>{});
+  // Log activity under user
+  db.collection('users').doc(uid).collection('activity').add(data).catch(()=>{});
 }
 
 function doLogout(){
@@ -537,6 +542,15 @@ function parseMoTeC(text){
     if(!laps[ln])laps[ln]=[];
     const row={};Object.keys(ci).forEach(k=>{row[k]=parseFloat(v[ci[k]])||0;});
     laps[ln].push(row);
+  }
+  // Fallback: if Lap Distance column is missing, compute from Distance column
+  const hasLapDist=ci['Lap Distance']!==undefined;
+  if(!hasLapDist){
+    Object.keys(laps).forEach(ln=>{
+      const rows=laps[ln];if(rows.length<2)return;
+      const d0=rows[0]['Distance']||0;
+      rows.forEach(r=>{r['Lap Distance']=(r['Distance']||0)-d0;});
+    });
   }
   // Collect all Lap Start Elapsed Times per lap for cross-lap timing
   const lapStartETs={};
