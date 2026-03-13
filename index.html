@@ -20,6 +20,7 @@
 .dz-lbl{font-size:20px;font-weight:700;letter-spacing:2px}.lbl-a{color:var(--blue)}.lbl-b{color:var(--orange)}
 .dz-hint{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
 .dz-fn{font-size:11px;color:var(--muted);max-width:270px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dz-warn{font-size:10px;color:var(--yellow);max-width:270px;text-align:center;margin-top:4px;line-height:1.4;display:none}
 .lap-box{background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:12px;width:310px;display:none}
 .lap-box h4{font-size:10px;text-transform:uppercase;letter-spacing:2px;color:var(--muted);margin-bottom:8px}
 .lap-list{display:flex;flex-direction:column;gap:4px;max-height:160px;overflow-y:auto}
@@ -177,11 +178,11 @@ header{flex-shrink:0;height:46px;display:flex;align-items:center;gap:11px;paddin
   <div class="up-sub">MoTeC CSV · Lap Comparison</div>
   <div class="up-row">
     <div class="up-col">
-      <div class="dz" id="dz-b"><input type="file" accept=".csv" id="fi-b"><div class="dz-lbl lbl-b">MY LAP</div><div class="dz-hint">Lap to analyse</div><div class="dz-fn" id="fn-b">Drop CSV here or click</div></div>
+      <div class="dz" id="dz-b"><input type="file" accept=".csv" id="fi-b"><div class="dz-lbl lbl-b">MY LAP</div><div class="dz-hint">Lap to analyse</div><div class="dz-fn" id="fn-b">Drop CSV here or click</div><div class="dz-warn" id="warn-b"></div></div>
       <div class="lap-box" id="lb-b"><h4>Select your lap</h4><div class="lap-list" id="ll-b"></div></div>
     </div>
     <div class="up-col">
-      <div class="dz" id="dz-a"><input type="file" accept=".csv" id="fi-a"><div class="dz-lbl lbl-a">REFERENCE</div><div class="dz-hint">Comparison lap</div><div class="dz-fn" id="fn-a">Drop CSV here or click</div></div>
+      <div class="dz" id="dz-a"><input type="file" accept=".csv" id="fi-a"><div class="dz-lbl lbl-a">REFERENCE</div><div class="dz-hint">Comparison lap</div><div class="dz-fn" id="fn-a">Drop CSV here or click</div><div class="dz-warn" id="warn-a"></div></div>
       <div class="lap-box" id="lb-a"><h4>Select reference lap</h4><div class="lap-list" id="ll-a"></div></div>
     </div>
   </div>
@@ -522,6 +523,9 @@ const S={csvA:{},csvB:{},selA:null,selB:null,lapA:null,lapB:null,
 // ── PARSER ────────────────────────────────────────────────────
 function parseMoTeC(text){
   const lines=text.split(/\r?\n/);
+  // Extract sample rate from metadata
+  let csvSampleRate=100;
+  for(let i=0;i<15;i++){if(lines[i]&&lines[i].includes('Sample Rate')){const m=lines[i].match(/"(\d+\.?\d*)"/);if(m)csvSampleRate=parseFloat(m[1]);break;}}
   let hi=-1;
   for(let i=0;i<30;i++){if(lines[i]&&lines[i].includes('"Time"')&&lines[i].includes('"Distance"')){hi=i;break;}}
   if(hi<0)throw new Error('No valid MoTeC header found');
@@ -556,12 +560,12 @@ function parseMoTeC(text){
   const lapStartETs={};
   Object.keys(laps).forEach(ln=>{
     const rows=laps[ln];if(rows.length<1)return;
-    lapStartETs[ln]=rows[0]['Lap Start Elapsed Time']||0;
+    lapStartETs[ln]=rows[0]['Lap Start Elapsed Time']||rows[0]['Session Elapsed Time']||0;
   });
   const result={};
   Object.keys(laps).forEach(ln=>{
     const rows=laps[ln];if(rows.length<10)return;
-    const lapStartET=rows[0]['Lap Start Elapsed Time']||0;
+    const lapStartET=rows[0]['Lap Start Elapsed Time']||rows[0]['Session Elapsed Time']||0;
     // Find peak Lap Distance (before countdown starts)
     let peakIdx=0,peakLD=rows[0]['Lap Distance'];
     for(let i=1;i<rows.length;i++){
@@ -614,8 +618,13 @@ function parseMoTeC(text){
       const remainTime=avgSpd>10?remaining/(avgSpd/3.6):0;
       lapTime=elapsed+remainTime;
     }
-    result[ln]={rows:clean,lapTime,lapStartET};
+    result[ln]={rows:clean,lapTime,lapStartET,computedLD:!hasLapDist};
   });
+  // Attach metadata warnings
+  const warnings=[];
+  if(!hasLapDist)warnings.push('⚠ No "Lap Distance" — computed from Distance. Enable "Output Distance" in MoTeC export for best accuracy.');
+  if(csvSampleRate<100)warnings.push('⚠ Sample rate: '+csvSampleRate+'Hz. Set to 100Hz in MoTeC export (damplugin.ini) for smoother data.');
+  result._meta={warnings,sampleRate:csvSampleRate,hasLapDist};
   return result;
 }
 
@@ -635,6 +644,12 @@ function rdFile(file,side){
       const data=parseMoTeC(e.target.result);
       if(side==='a'){S.csvA=data;document.getElementById('fn-a').textContent=file.name;document.getElementById('dz-a').classList.add('ok-a');}
       else{S.csvB=data;document.getElementById('fn-b').textContent=file.name;document.getElementById('dz-b').classList.add('ok-b');}
+      // Show warnings if any
+      const warnEl=document.getElementById('warn-'+side);
+      if(data._meta&&data._meta.warnings.length>0){
+        warnEl.innerHTML=data._meta.warnings.join('<br>');
+        warnEl.style.display='block';
+      }else{warnEl.style.display='none';}
       mkLapList(side,data);
     }catch(err){alert('Load error: '+err.message);}
   };
@@ -645,6 +660,7 @@ function mkLapList(side,data){
   const box=document.getElementById('lb-'+side),list=document.getElementById('ll-'+side);
   box.style.display='block';list.innerHTML='';
   Object.keys(data).sort((a,b)=>+a-+b).forEach(ln=>{
+    if(ln==='_meta')return;
     const info=data[ln];if(info.rows.length<10)return;
     const el=document.createElement('div');el.className='lap-item';
     el.innerHTML=`<span class="lap-n">Lap ${ln}</span><span class="lap-t">${fmtT(info.lapTime)}</span>`;
@@ -663,9 +679,38 @@ function pickLap(side,ln,el){
 }
 
 // ── ANALYSIS ENTRY ────────────────────────────────────────────
+// ── DISTANCE ALIGNMENT — GPS-based calibration ────────────────
+function alignLapDistance(){
+  // Only align if at least one lap has computed (non-native) Lap Distance
+  if(!S.lapA.computedLD&&!S.lapB.computedLD)return;
+  // Determine which lap is native (trusted) and which is computed
+  const native=S.lapA.computedLD?S.lapB:S.lapA;
+  const computed=S.lapA.computedLD?S.lapA:S.lapB;
+  const rN=native.rows,rC=computed.rows;
+  if(rN.length<50||rC.length<50)return;
+  // Get GPS of first data point of the computed lap
+  const cStart={lat:rC[0]['GPS Latitude'],lon:rC[0]['GPS Longitude']};
+  if(cStart.lat===0&&cStart.lon===0)return; // No GPS data
+  // Find closest GPS point in native lap
+  let bestDist=Infinity,bestLD=0;
+  rN.forEach(r=>{
+    const dlat=r['GPS Latitude']-cStart.lat;
+    const dlon=r['GPS Longitude']-cStart.lon;
+    const d2=dlat*dlat+dlon*dlon;
+    if(d2<bestDist){bestDist=d2;bestLD=r['Lap Distance'];}
+  });
+  // The offset: computed lap thinks it starts at LD≈0, but it's really at bestLD
+  const offset=bestLD-rC[0]['Lap Distance'];
+  if(Math.abs(offset)<1)return; // No significant offset
+  // Apply offset to computed lap
+  rC.forEach(r=>{r['Lap Distance']+=offset;});
+  rC.sort((a,b)=>a['Lap Distance']-b['Lap Distance']);
+}
+
 function startAnalysis(){
   S.lapA=S.csvA[S.selA];S.lapB=S.csvB[S.selB];
   if(!S.lapA||!S.lapB)return;
+  alignLapDistance(); // Fix distance offset between laps
   computeDelta();mkGPS();buildSegs();
   document.getElementById('upload-screen').style.display='none';
   document.getElementById('app').style.display='flex';
@@ -693,7 +738,7 @@ function computeDelta(){
   const rA=S.lapA.rows,rB=S.lapB.rows;
   const startD=Math.max(rA[0]['Lap Distance'],rB[0]['Lap Distance']);
   const maxD=Math.min(rA[rA.length-1]['Lap Distance'],rB[rB.length-1]['Lap Distance']);
-  S.delta=[];
+  const raw=[];
   // Use LapStartET as the true t=0 reference for each lap
   const baseA=S.lapA.lapStartET||rA[0]['Session Elapsed Time'];
   const baseB=S.lapB.lapStartET||rB[0]['Session Elapsed Time'];
@@ -701,8 +746,26 @@ function computeDelta(){
     const d=startD+(i/1000)*(maxD-startD);
     const tA=iD(rA,d,'Session Elapsed Time')-baseA;
     const tB=iD(rB,d,'Session Elapsed Time')-baseB;
-    S.delta.push({d,dtA:tA,dtB:tB,delta:tB-tA});
+    raw.push({d,dtA:tA,dtB:tB,delta:tB-tA});
   }
+  // Adaptive smoothing: detect time resolution coarseness
+  // Count unique time values in each lap within the distance range
+  const tValsA=new Set(),tValsB=new Set();
+  rA.filter(r=>r['Lap Distance']>=startD&&r['Lap Distance']<=maxD).forEach(r=>tValsA.add(r['Session Elapsed Time'].toFixed(3)));
+  rB.filter(r=>r['Lap Distance']>=startD&&r['Lap Distance']<=maxD).forEach(r=>tValsB.add(r['Session Elapsed Time'].toFixed(3)));
+  const resA=rA.filter(r=>r['Lap Distance']>=startD&&r['Lap Distance']<=maxD).length/(tValsA.size||1);
+  const resB=rB.filter(r=>r['Lap Distance']>=startD&&r['Lap Distance']<=maxD).length/(tValsB.size||1);
+  // Smooth window: more samples per unique time = coarser = more smoothing needed
+  const coarseness=Math.max(resA,resB);
+  const smoothW=coarseness>3?Math.min(60,Math.round(coarseness*3)):0;
+  S.delta=[];
+  if(smoothW>1){
+    for(let i=0;i<raw.length;i++){
+      let s=0,c=0;
+      for(let j=Math.max(0,i-smoothW);j<=Math.min(raw.length-1,i+smoothW);j++){s+=raw[j].delta;c++;}
+      S.delta.push({d:raw[i].d,dtA:raw[i].dtA,dtB:raw[i].dtB,delta:s/c});
+    }
+  }else{S.delta=raw;}
   // Compute delta rate of change (s per meter, smoothed over windowM)
   computeDeltaRate();
 }
@@ -1178,8 +1241,8 @@ function renderDet(){
 let mmZoomLevel=1; // 1 = default (segment + margin), lower = more zoomed in, higher = more zoomed out
 function mmZoom(dir){
   if(dir===0){mmZoomLevel=1;}
-  else if(dir>0){mmZoomLevel=clamp(mmZoomLevel*2.5,0.03,10);}
-  else{mmZoomLevel=clamp(mmZoomLevel/2.5,0.03,10);}
+  else if(dir>0){mmZoomLevel=clamp(mmZoomLevel*5.0,0.005,20);}
+  else{mmZoomLevel=clamp(mmZoomLevel/5.0,0.005,20);}
   renderMiniMap();
 }
 // Scroll wheel on mini map
@@ -1207,8 +1270,8 @@ function renderMiniMap(){
   const sbw=sbx1-sbx0||1,sbh=sby1-sby0||1;
   const scx=(sbx0+sbx1)/2,scy=(sby0+sby1)/2;
   // 3. Zoom: expand bbox by zoomLevel factor (zoom<1 = closer, zoom>1 = further)
-  const zf=Math.max(0.05,mmZoomLevel);
-  const vbw=sbw*zf+sbw*0.5,vbh=sbh*zf+sbh*0.5;
+  const zf=Math.max(0.001,mmZoomLevel);
+  const vbw=sbw*(zf+0.1),vbh=sbh*(zf+0.1);
   // 4. Fixed scale from zoomed bbox
   const pd=16,sc2=Math.min((W-2*pd)/vbw,(H-2*pd)/vbh);
   // 5. Pan: center on cursor if active, else segment center
@@ -1239,15 +1302,28 @@ function renderMiniMap(){
   ctx.beginPath();drawPx(allPxA,p=>p.d>seg.d1&&p.d<=D1);ctx.stroke();
   const sA=allPxA.filter(p=>p.d>=seg.d0&&p.d<=seg.d1);
   const sB=allPxB.filter(p=>p.d>=seg.d0&&p.d<=seg.d1);
+  // Car-width racing lines: line thickness = car width in pixels at current zoom
+  // FS1-26 car width ≈ 2.0m
+  const carW=2.0;
+  let pxPerM=3; // fallback
+  if(sA.length>10){
+    const p1=sA[0],p2=sA[sA.length-1];
+    const pxD=Math.sqrt(Math.pow(mx(p2.x)-mx(p1.x),2)+Math.pow(my(p2.y)-my(p1.y),2));
+    const mD=Math.abs(p2.d-p1.d)||1;
+    pxPerM=pxD/mD;
+  }
+  const carPx=Math.max(2,Math.round(carW*pxPerM));
+  // Fill between real lines
   if(sA.length>1&&sB.length>1){
-    ctx.save();ctx.globalAlpha=0.18;ctx.fillStyle='#fff';ctx.beginPath();
+    ctx.save();ctx.globalAlpha=0.2;ctx.fillStyle='#fff';ctx.beginPath();
     sA.forEach((p,i)=>{i===0?ctx.moveTo(mx(p.x),my(p.y)):ctx.lineTo(mx(p.x),my(p.y));});
     for(let i=sB.length-1;i>=0;i--)ctx.lineTo(mx(sB[i].x),my(sB[i].y));
     ctx.closePath();ctx.fill();ctx.restore();
   }
-  ctx.strokeStyle='rgba(0,188,212,.9)';ctx.lineWidth=3;ctx.lineJoin='round';
+  // Draw lines at real positions with car-width thickness
+  ctx.strokeStyle='rgba(0,188,212,.7)';ctx.lineWidth=carPx;ctx.lineJoin='round';ctx.lineCap='round';
   ctx.beginPath();sA.forEach((p,i)=>{i===0?ctx.moveTo(mx(p.x),my(p.y)):ctx.lineTo(mx(p.x),my(p.y));});ctx.stroke();
-  ctx.strokeStyle='rgba(255,107,26,.9)';ctx.lineWidth=3;ctx.lineJoin='round';
+  ctx.strokeStyle='rgba(255,107,26,.7)';ctx.lineWidth=carPx;ctx.lineJoin='round';ctx.lineCap='round';
   ctx.beginPath();sB.forEach((p,i)=>{i===0?ctx.moveTo(mx(p.x),my(p.y)):ctx.lineTo(mx(p.x),my(p.y));});ctx.stroke();
   if(S.cursorD!==null){
     const ptA=allPxA.find(p=>p.d>=S.cursorD)||allPxA[allPxA.length-1];
@@ -1578,7 +1654,7 @@ function doReset(){
   document.getElementById('upload-screen').style.display='flex';
   document.getElementById('app').style.display='none';
   Object.assign(S,{csvA:{},csvB:{},selA:null,selB:null,lapA:null,lapB:null,delta:[],deltaRate:[],maxDeltaRate:0.001,segs:[],activeSeg:-1,cursorD:null,gpsA:[],gpsB:[],gpsScale:null,mapMode:'delta'});
-  ['a','b'].forEach(s=>{document.getElementById('lb-'+s).style.display='none';document.getElementById('dz-'+s).className='dz';document.getElementById('fn-'+s).textContent='Drop CSV here or click';document.getElementById('fi-'+s).value='';});
+  ['a','b'].forEach(s=>{document.getElementById('lb-'+s).style.display='none';document.getElementById('dz-'+s).className='dz';document.getElementById('fn-'+s).textContent='Drop CSV here or click';document.getElementById('fi-'+s).value='';document.getElementById('warn-'+s).style.display='none';});
   document.getElementById('btn-go').classList.remove('rdy');
 }
 
