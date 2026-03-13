@@ -487,17 +487,19 @@ function logSession(action,extra){
   if(!currentUser)return;
   const data={
     action:action,
-    time:new Date().toISOString()
+    time:firebase.firestore.FieldValue.serverTimestamp()
   };
   if(extra)Object.assign(data,extra);
   const uid=currentUser.uid;
   const name=currentUser.displayName||currentUser.email||'unknown';
   // Update user doc with last seen
   db.collection('users').doc(uid).set({
-    name:name,email:currentUser.email||'',lastSeen:new Date().toISOString()
+    name:name,email:currentUser.email||'',lastSeen:firebase.firestore.FieldValue.serverTimestamp()
   },{merge:true}).catch(()=>{});
   // Log activity under user
-  db.collection('users').doc(uid).collection('activity').add(data).catch(()=>{});
+  // Reverse timestamp as doc ID → newest always sorts first in Firestore console
+  const docId=(9999999999999-Date.now()).toString()+'_'+Math.random().toString(36).slice(2,6);
+  db.collection('users').doc(uid).collection('activity').doc(docId).set(data).catch(()=>{});
 }
 
 function doLogout(){
