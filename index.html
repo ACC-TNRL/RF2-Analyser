@@ -3,14 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>rF2 Lap Analyser</title>
+<title>DeltaLab — rF2 Telemetry</title>
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#07090d;--bg2:#0d1117;--bg3:#131923;--panel:#17202c;--border:#243040;--orange:#ff6b1a;--green:#00e676;--red:#ff3d5a;--blue:#00bcd4;--yellow:#ffd740;--text:#dde4ee;--muted:#8090a4;--font:'Rajdhani',sans-serif;--mono:'Share Tech Mono',monospace;}
 *{box-sizing:border-box;margin:0;padding:0}html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font);overflow:hidden}
 #upload-screen{position:fixed;inset:0;z-index:300;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px}
-.up-logo{font-size:32px;font-weight:700;letter-spacing:5px;text-transform:uppercase;color:var(--orange)}.up-logo span{color:var(--text)}
-.up-sub{font-size:12px;color:var(--muted);letter-spacing:3px;text-transform:uppercase;margin-top:-20px}
+.up-logo{display:flex;align-items:center;gap:14px;font-size:32px;font-weight:700;letter-spacing:5px;text-transform:uppercase;color:var(--orange)}.up-logo span{color:var(--text)}.up-logo svg{flex-shrink:0}
+.logo{display:flex;align-items:center;gap:7px;font-size:15px;font-weight:700;letter-spacing:3px;color:var(--orange);text-transform:uppercase;white-space:nowrap;margin-right:3px}.logo span{color:var(--text)}.logo svg{flex-shrink:0}.up-sub{font-size:12px;color:var(--muted);letter-spacing:3px;text-transform:uppercase;margin-top:-16px}
 .up-row{display:flex;gap:20px;align-items:flex-start}.up-col{display:flex;flex-direction:column;gap:10px;align-items:center}
 .dz{width:310px;min-height:130px;border:2px dashed var(--border);border-radius:8px;background:var(--bg2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;cursor:pointer;transition:all .2s;position:relative;padding:24px 20px}
 .dz input{position:absolute;inset:0;opacity:0;cursor:pointer}
@@ -31,10 +31,13 @@
 #btn-go.rdy{opacity:1;pointer-events:auto}#btn-go.rdy:hover{background:#ff8f4a;transform:translateY(-1px)}
 .help-btn{padding:8px 18px;background:rgba(255,107,26,.08);border:1px solid var(--orange);color:var(--orange);border-radius:6px;font-family:var(--font);font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:all .2s;margin-top:-8px}
 .help-btn:hover{background:rgba(255,107,26,.18);color:#ff8f4a}
-.donate-btn{padding:6px 16px;background:rgba(255,215,64,.08);border:1px solid rgba(255,215,64,.4);color:#ffd740;border-radius:6px;font-family:var(--font);font-size:11px;font-weight:600;letter-spacing:1px;cursor:pointer;transition:all .2s;text-decoration:none;display:inline-block}
-.donate-btn:hover{background:rgba(255,215,64,.18);border-color:#ffd740}
+.alpha-badge{font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#000 !important;background:var(--yellow);padding:1px 6px;border-radius:3px;line-height:1.4;flex-shrink:0}
+.donate-btn{padding:9px 22px;background:var(--yellow);border:none;color:#000;border-radius:6px;font-family:var(--font);font-size:13px;font-weight:700;letter-spacing:1px;cursor:pointer;transition:all .2s;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+.donate-btn:hover{background:#ffe57f;transform:translateY(-1px);box-shadow:0 4px 16px rgba(255,215,64,.3)}
 #help-modal{position:fixed;inset:0;z-index:400;background:rgba(7,9,13,.92);display:none;align-items:center;justify-content:center;padding:30px}
 #help-modal.show{display:flex}
+#mix-modal{position:fixed;inset:0;z-index:400;background:rgba(7,9,13,.92);display:none;align-items:center;justify-content:center;padding:30px}
+#mix-modal.show{display:flex}
 .help-box{background:var(--bg2);border:1px solid var(--border);border-radius:10px;max-width:620px;width:100%;max-height:85vh;overflow-y:auto;padding:28px 32px}
 .help-box h2{font-size:18px;font-weight:700;color:var(--orange);letter-spacing:2px;text-transform:uppercase;margin-bottom:16px}
 .help-box h3{font-size:13px;font-weight:700;color:var(--text);margin:18px 0 8px;text-transform:uppercase;letter-spacing:1px}
@@ -44,7 +47,6 @@
 .help-box .close-help{padding:8px 24px;background:var(--orange);color:#000;border:none;border-radius:4px;font-family:var(--font);font-size:13px;font-weight:700;cursor:pointer;margin-top:18px;text-transform:uppercase;letter-spacing:1px}
 #app{display:none;flex-direction:column;height:100vh}
 header{flex-shrink:0;height:46px;display:flex;align-items:center;gap:11px;padding:0 15px;background:var(--bg2);border-bottom:2px solid var(--orange)}
-.logo{font-size:15px;font-weight:700;letter-spacing:3px;color:var(--orange);text-transform:uppercase;white-space:nowrap;margin-right:3px}.logo span{color:var(--text)}
 .pill{display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:4px 11px}
 .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}.dot-a{background:var(--blue)}.dot-b{background:var(--orange)}
 .plbl{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px}.pval{font-family:var(--mono);font-size:15px;font-weight:700;line-height:1.1}
@@ -58,7 +60,8 @@ header{flex-shrink:0;height:46px;display:flex;align-items:center;gap:11px;paddin
 #vov{flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:0}
 .ov-mid{flex:1;display:flex;overflow:hidden;min-height:0}
 .ov-l{flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:0;border-right:1px solid var(--border)}
-.ov-r{width:36%;flex-shrink:0;position:relative;overflow:hidden}
+.ov-r{width:36%;flex-shrink:0;display:flex;flex-direction:column;overflow:hidden}
+.map-wrap{position:relative;flex:1;min-height:200px;overflow:hidden}
 .strip{flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:0;border-bottom:1px solid var(--border)}
 .strip:last-child{border-bottom:none}
 .strip-hdr{flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:5px 12px;border-bottom:1px solid rgba(255,255,255,.04);background:rgba(0,0,0,.2)}
@@ -80,7 +83,7 @@ header{flex-shrink:0;height:46px;display:flex;align-items:center;gap:11px;paddin
 .seg-scroll{flex:1;display:flex;align-items:stretch;overflow-x:auto;overflow-y:hidden;gap:7px;padding:7px 14px}
 .seg-scroll::-webkit-scrollbar{height:4px}.seg-scroll::-webkit-scrollbar-track{background:var(--bg)}.seg-scroll::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
 .sc{flex-shrink:0;width:110px;background:var(--bg3);border:1px solid var(--border);border-radius:5px;padding:7px 8px;cursor:pointer;transition:all .12s;display:flex;flex-direction:column;gap:2px;user-select:none}
-.sc:hover{border-color:var(--orange);background:rgba(255,107,26,.06)}.sc.sel{border-color:var(--yellow);box-shadow:0 0 0 1px rgba(255,215,64,.2)}
+.sc:hover{border-color:var(--orange);background:rgba(255,107,26,.06)}.sc.sel{border-color:var(--yellow);box-shadow:0 0 0 1px rgba(255,215,64,.2)}.sc.graph-hover{border-color:var(--orange);box-shadow:0 0 8px rgba(255,107,26,.25);background:rgba(255,107,26,.06);transition:border-color .08s,box-shadow .08s,background .08s}
 .sn{font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sd{font-family:var(--mono);font-size:15px;font-weight:700;line-height:1.1}
 .sb-w{height:3px;background:var(--panel);border-radius:2px;overflow:hidden;margin:1px 0}.sb{height:100%;border-radius:2px}
@@ -139,6 +142,55 @@ header{flex-shrink:0;height:46px;display:flex;align-items:center;gap:11px;paddin
 .login-row .btn-link{flex:1;text-align:center}
 .tc-wrap{width:100%;display:flex;flex-direction:column;gap:8px;align-items:center;display:none}
 .tc-wrap.show{display:flex}
+#ai-modal{position:fixed;inset:0;z-index:400;background:rgba(7,9,13,.92);display:none;align-items:center;justify-content:center;padding:30px}
+#ai-modal.show{display:flex}
+.ai-box{background:var(--bg2);border:1px solid var(--border);border-radius:10px;max-width:680px;width:100%;max-height:85vh;display:flex;flex-direction:column;overflow:hidden}
+.ai-hdr{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid var(--border)}
+.ai-hdr h2{font-size:15px;font-weight:700;color:var(--green);letter-spacing:2px;text-transform:uppercase;margin:0}
+.ai-footer{padding:12px 24px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.ai-close{padding:6px 18px;background:var(--bg3);color:var(--text);border:1px solid var(--border);border-radius:4px;font-family:var(--font);font-size:12px;cursor:pointer}
+.ai-section{flex-shrink:0;max-height:45%;border-top:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.ai-section-hdr{flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:7px 12px;background:rgba(0,0,0,.25)}
+.ai-section-ttl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:var(--green)}
+.ai-remaining{font-size:9px;color:var(--muted)}
+.ai-gen-row{display:flex;align-items:center;justify-content:center;gap:10px;padding:14px}
+.ai-btn{padding:7px 18px;background:var(--green);color:#000;border:none;border-radius:4px;font-family:var(--font);font-size:11px;font-weight:700;cursor:pointer;letter-spacing:1px;text-transform:uppercase;transition:opacity .2s}
+.ai-btn:disabled{opacity:.4;cursor:not-allowed}
+.ai-scroll{flex:1;overflow-y:auto;padding:8px}
+.ai-scroll::-webkit-scrollbar{width:4px}.ai-scroll::-webkit-scrollbar-track{background:var(--bg)}.ai-scroll::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.ai-grid{display:flex;flex-direction:column;gap:5px}
+.ai-card{background:var(--bg3);border:1px solid var(--border);border-radius:6px;cursor:pointer;transition:border-color .15s,box-shadow .15s;overflow:hidden;display:flex;flex-direction:column}
+.ai-card:hover{border-color:rgba(255,107,26,.5);box-shadow:0 0 10px rgba(255,107,26,.08)}
+.ai-card.expanded{border-color:var(--orange)}
+.ai-card-top{padding:7px 8px;display:flex;align-items:stretch;gap:8px}
+.ai-card-map{flex-shrink:0;width:56px;height:44px;border-radius:3px;background:var(--panel);overflow:hidden}
+.ai-card-map canvas{width:100%;height:100%;display:block}
+.ai-card-stripe{width:3px;flex-shrink:0;border-radius:2px;align-self:stretch;min-height:32px}
+.ai-card-stripe.loss{background:var(--red)}.ai-card-stripe.focus{background:var(--yellow)}
+.ai-card-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.ai-card-row1{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.ai-card-seg{font-size:11px;font-weight:700;color:var(--text);white-space:nowrap}
+.ai-card-delta{font-size:11px;font-weight:700;font-family:var(--mono);color:var(--red)}
+.ai-card-range{font-size:9px;color:var(--muted);font-family:var(--mono)}
+.ai-card-cat{font-size:8px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:1px 5px;border-radius:2px;color:var(--bg);white-space:nowrap}
+.ai-cat-braking{background:#ff3d5a}.ai-cat-cornering{background:#29b6f6}.ai-cat-throttle{background:#00e676}.ai-cat-gears{background:#8090a4}.ai-cat-line{background:#ffd740;color:#000}.ai-cat-general{background:#5a6a7e}
+.ai-card-title{font-size:10px;color:var(--orange);font-weight:600;line-height:1.3}
+.ai-card-right{flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;gap:4px;padding:2px 0}
+.ai-card-severity-bar{width:4px;height:20px;border-radius:2px;background:var(--panel);overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end}
+.ai-card-severity-fill{width:100%;border-radius:2px}
+.ai-card-jump{padding:3px 8px;background:rgba(255,107,26,.12);border:1px solid rgba(255,107,26,.35);border-radius:3px;color:var(--orange);font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:1px;cursor:pointer;transition:all .12s;text-transform:uppercase;white-space:nowrap}
+.ai-card-jump:hover{background:rgba(255,107,26,.3);border-color:var(--orange)}
+.ai-card-detail{padding:6px 10px 8px 72px;font-size:11px;color:var(--text);line-height:1.6;display:none;border-top:1px solid var(--border)}
+.ai-card.expanded .ai-card-detail{display:block}
+.ai-card-focus .ai-card-delta{color:var(--yellow)}
+.ai-focus-bar{background:var(--bg3);border:1px solid var(--border);border-left:3px solid var(--yellow);border-radius:6px;padding:8px 12px;font-size:11px;color:var(--text);line-height:1.6}
+.ai-focus-bar strong{color:var(--yellow)}
+.ai-summary-bar{font-size:11px;color:var(--muted);line-height:1.5;padding:2px 4px 6px}
+.ai-loading-inline{text-align:center;color:var(--muted);padding:20px 0;font-size:11px}
+.ai-loading-inline .spin{display:inline-block;width:14px;height:14px;border:2px solid var(--border);border-top-color:var(--green);border-radius:50%;animation:aispin .8s linear infinite;vertical-align:middle;margin-right:6px}
+@keyframes aispin{to{transform:rotate(360deg)}}
+.ai-error-inline{font-size:11px;color:var(--red);background:rgba(255,61,90,.1);padding:8px 10px;border-radius:4px}
+.ai-limit-inline{font-size:11px;color:var(--yellow);background:rgba(255,215,64,.1);padding:8px 10px;border-radius:4px}
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
@@ -147,8 +199,8 @@ header{flex-shrink:0;height:46px;display:flex;align-items:center;gap:11px;paddin
 <body>
 
 <div id="login-screen">
-  <div class="up-logo">rF2 <span>Analyser</span></div>
-  <div class="up-sub">MoTeC CSV · Lap Comparison</div>
+  <div class="up-logo"><svg width="58" height="64" viewBox="0 0 100 112"><path d="M50 18L4 106h92Z" fill="#ff6b1a"/><path d="M50 34L18 96h64Z" fill="#07090d"/><rect x="45.5" y="6" width="9" height="30" rx="1.5" fill="#ff6b1a"/><rect x="48" y="10" width="4" height="24" rx=".5" fill="#07090d"/><path d="M42 3q0-3 3-3h10q3 0 3 3l-1 4H43Z" fill="#ff6b1a"/><rect x="44.5" y="4.5" width="11" height="2" rx=".8" fill="#07090d"/><path d="M42 16h16l-1 4H43Z" fill="#ff6b1a"/><rect x="44.5" y="17.5" width="11" height="1.5" rx=".5" fill="#07090d"/><path d="M45.5 36l-2.5 6-17 52h48l-17-52-2.5-6Z" fill="#ff6b1a"/><path d="M47 40l-2 5-15 45h40l-15-45-2-5Z" fill="#07090d"/><path d="M38 72q6-4 12 0t12 0l5 16H33Z" fill="#ff6b1a" opacity=".45"/><circle cx="43" cy="80" r="5" fill="#07090d"/><circle cx="56" cy="77" r="3.5" fill="#07090d"/><circle cx="50" cy="69" r="2.5" fill="#07090d"/></svg>Delta<span>Lab</span><span class="alpha-badge" style="font-size:11px;padding:2px 8px;margin-left:4px;align-self:flex-start;margin-top:8px">alpha</span></div>
+  <div class="up-sub">rF2 Telemetry · Lap Comparison</div>
   <div class="login-box" id="login-box">
     <button class="btn-google" onclick="googleSignIn()">
       <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.27-4.74 3.27-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
@@ -174,39 +226,49 @@ header{flex-shrink:0;height:46px;display:flex;align-items:center;gap:11px;paddin
 </div>
 
 <div id="upload-screen" style="display:none">
-  <div class="up-logo">rF2 <span>Analyser</span></div>
-  <div class="up-sub">MoTeC CSV · Lap Comparison</div>
-  <div class="up-row">
+  <div class="up-logo"><svg width="58" height="64" viewBox="0 0 100 112"><path d="M50 18L4 106h92Z" fill="#ff6b1a"/><path d="M50 34L18 96h64Z" fill="#07090d"/><rect x="45.5" y="6" width="9" height="30" rx="1.5" fill="#ff6b1a"/><rect x="48" y="10" width="4" height="24" rx=".5" fill="#07090d"/><path d="M42 3q0-3 3-3h10q3 0 3 3l-1 4H43Z" fill="#ff6b1a"/><rect x="44.5" y="4.5" width="11" height="2" rx=".8" fill="#07090d"/><path d="M42 16h16l-1 4H43Z" fill="#ff6b1a"/><rect x="44.5" y="17.5" width="11" height="1.5" rx=".5" fill="#07090d"/><path d="M45.5 36l-2.5 6-17 52h48l-17-52-2.5-6Z" fill="#ff6b1a"/><path d="M47 40l-2 5-15 45h40l-15-45-2-5Z" fill="#07090d"/><path d="M38 72q6-4 12 0t12 0l5 16H33Z" fill="#ff6b1a" opacity=".45"/><circle cx="43" cy="80" r="5" fill="#07090d"/><circle cx="56" cy="77" r="3.5" fill="#07090d"/><circle cx="50" cy="69" r="2.5" fill="#07090d"/></svg>Delta<span>Lab</span><span class="alpha-badge" style="font-size:11px;padding:2px 8px;margin-left:4px;align-self:flex-start;margin-top:8px">alpha</span></div>
+  <div class="up-sub">rF2 Telemetry · Lap Comparison</div>  <div class="up-row">
     <div class="up-col">
-      <div class="dz" id="dz-b"><input type="file" accept=".csv" id="fi-b"><div class="dz-lbl lbl-b">MY LAP</div><div class="dz-hint">Lap to analyse</div><div class="dz-fn" id="fn-b">Drop CSV here or click</div><div class="dz-warn" id="warn-b"></div></div>
+      <div class="dz" id="dz-b"><input type="file" accept=".csv,.ld" id="fi-b"><div class="dz-lbl lbl-b">MY LAP</div><div class="dz-hint">Lap to analyse</div><div class="dz-fn" id="fn-b">Drop CSV / LD here or click</div><div class="dz-warn" id="warn-b"></div></div>
       <div class="lap-box" id="lb-b"><h4>Select your lap</h4><div class="lap-list" id="ll-b"></div></div>
     </div>
     <div class="up-col">
-      <div class="dz" id="dz-a"><input type="file" accept=".csv" id="fi-a"><div class="dz-lbl lbl-a">REFERENCE</div><div class="dz-hint">Comparison lap</div><div class="dz-fn" id="fn-a">Drop CSV here or click</div><div class="dz-warn" id="warn-a"></div></div>
+      <div class="dz" id="dz-a"><input type="file" accept=".csv,.ld" id="fi-a"><div class="dz-lbl lbl-a">REFERENCE</div><div class="dz-hint">Comparison lap</div><div class="dz-fn" id="fn-a">Drop CSV / LD here or click</div><div class="dz-warn" id="warn-a"></div></div>
       <div class="lap-box" id="lb-a"><h4>Select reference lap</h4><div class="lap-list" id="ll-a"></div></div>
     </div>
   </div>
   <button id="btn-go" onclick="startAnalysis()">Analyse →</button>
-  <button class="help-btn" onclick="document.getElementById('help-modal').classList.add('show')">? How to export from MoTeC</button>
+  <button class="help-btn" onclick="document.getElementById('help-modal').classList.add('show')">? How to load telemetry</button>
   <a class="donate-btn" href="https://paypal.me/rwvansoest" target="_blank" rel="noopener">☕ Buy me a coffee</a>
   <button class="btn-link" onclick="doLogout()" style="margin-top:4px;font-size:11px" id="ul-user"></button>
 </div>
 
 <div id="help-modal">
   <div class="help-box">
-    <h2>How to Export CSV from MoTeC i2</h2>
-    <p>This tool requires a MoTeC CSV export with distance data. Follow these steps in MoTeC i2 Pro:</p>
-    <h3>Step 1 — Open your telemetry</h3>
+    <h2>How to load telemetry data</h2>
+    <p>This tool supports two formats: <strong>direct .ld files</strong> (easiest) and <strong>MoTeC CSV exports</strong> (more control).</p>
+    <h3>Option A — Load .ld files directly (recommended)</h3>
+    <ol>
+      <li>Go to your rFactor 2 telemetry folder: <strong>UserData\player\Log\</strong></li>
+      <li>Find the <strong>.ld file</strong> for the session you want to analyse</li>
+      <li>Drag &amp; drop or browse to load it — the tool reads all channels and laps automatically</li>
+    </ol>
+    <div class="note">
+      <strong>Tip:</strong> The .ld file contains all laps from the session. Select which lap to compare in the lap selector after loading.
+    </div>
+    <h3>Option B — Export CSV from MoTeC i2</h3>
+    <p>For more control over which channels and laps to export:</p>
+    <h4>Step 1 — Open your telemetry</h4>
     <ol>
       <li>Open MoTeC i2 Pro and load your rFactor 2 telemetry file (.ld file from the rF2 log folder)</li>
       <li>In the Lap/Range selector (bottom of the screen), select the lap you want to export</li>
     </ol>
-    <h3>Step 2 — Set up a Time/Distance graph</h3>
+    <h4>Step 2 — Set up a Time/Distance graph</h4>
     <ol>
       <li>Make sure you have a Time/Distance graph open with the channels you need. The default rF2 workspace usually includes all required channels</li>
       <li>The graph must be set to <strong>Distance</strong> mode (not Time) — click the T/D toggle in the graph toolbar if needed</li>
     </ol>
-    <h3>Step 3 — Export as CSV</h3>
+    <h4>Step 3 — Export as CSV</h4>
     <ol>
       <li>Right-click on the Time/Distance graph</li>
       <li>Select <strong>Export Data...</strong></li>
@@ -225,7 +287,7 @@ header{flex-shrink:0;height:46px;display:flex;align-items:center;gap:11px;paddin
     <p>The following channels are used (most are included by default): Ground Speed, Throttle Pos, Brake Pos, Gear, G Force Lat, Steering, GPS Latitude, GPS Longitude, Lap Number, Lap Distance, Session Elapsed Time, Path Lateral</p>
     <h3>Tips</h3>
     <ol>
-      <li>You can export two different laps from different sessions — each as its own CSV file — and compare them here</li>
+      <li>You can load .ld files and CSV files in any combination — e.g. compare an .ld file against a CSV export</li>
       <li>You can also export multiple laps in one CSV file and select which laps to compare in the tool</li>
       <li>For rFactor 2, telemetry files are stored in: <strong>UserData\player\Log\</strong></li>
     </ol>
@@ -233,9 +295,30 @@ header{flex-shrink:0;height:46px;display:flex;align-items:center;gap:11px;paddin
   </div>
 </div>
 
+<div id="mix-modal">
+  <div class="help-box" style="max-width:480px">
+    <h2 style="color:var(--yellow)">⚠ Mixed file types</h2>
+    <p>You're comparing an <strong>.ld</strong> file with a <strong>CSV</strong> export. This is not recommended:</p>
+    <p style="margin:12px 0"><strong>.ld files</strong> compute distance by integrating Ground Speed, while <strong>CSV exports</strong> use native Lap Distance from MoTeC. This mismatch causes drift between the two distance axes, resulting in inaccurate delta and misaligned traces.</p>
+    <p>For best results, compare <strong>two .ld files</strong> or <strong>two CSV exports</strong>.</p>
+    <div style="display:flex;gap:10px;margin-top:20px">
+      <button class="close-help" style="background:var(--yellow)" onclick="document.getElementById('mix-modal').classList.remove('show');doStartAnalysis()">Continue anyway</button>
+      <button class="close-help" style="background:var(--bg3);color:var(--text)" onclick="document.getElementById('mix-modal').classList.remove('show')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div id="ai-modal">
+  <div class="ai-box">
+    <div class="ai-hdr"><h2>🤖 AI Coach — Detail</h2><button class="ai-close" onclick="document.getElementById('ai-modal').classList.remove('show')">✕</button></div>
+    <div style="flex:1;overflow-y:auto;padding:20px 24px;font-size:13px;line-height:1.8;color:var(--text)" id="ai-detail-body"></div>
+    <div class="ai-footer"><span></span><button class="ai-close" onclick="document.getElementById('ai-modal').classList.remove('show')">Close</button></div>
+  </div>
+</div>
+
 <div id="app">
   <header>
-    <div class="logo">rF2 <span>Analyser</span></div>
+    <div class="logo"><svg width="22" height="24" viewBox="0 0 100 112"><path d="M50 18L4 106h92Z" fill="#ff6b1a"/><path d="M50 34L18 96h64Z" fill="#07090d"/><rect x="45.5" y="6" width="9" height="30" rx="1.5" fill="#ff6b1a"/><rect x="48" y="10" width="4" height="24" rx=".5" fill="#07090d"/><path d="M42 3q0-3 3-3h10q3 0 3 3l-1 4H43Z" fill="#ff6b1a"/><rect x="44.5" y="4.5" width="11" height="2" rx=".8" fill="#07090d"/><path d="M42 16h16l-1 4H43Z" fill="#ff6b1a"/><rect x="44.5" y="17.5" width="11" height="1.5" rx=".5" fill="#07090d"/><path d="M45.5 36l-2.5 6-17 52h48l-17-52-2.5-6Z" fill="#ff6b1a"/><path d="M47 40l-2 5-15 45h40l-15-45-2-5Z" fill="#07090d"/><path d="M38 72q6-4 12 0t12 0l5 16H33Z" fill="#ff6b1a" opacity=".45"/><circle cx="43" cy="80" r="5" fill="#07090d"/><circle cx="56" cy="77" r="3.5" fill="#07090d"/><circle cx="50" cy="69" r="2.5" fill="#07090d"/></svg>Delta<span>Lab</span></div><span class="alpha-badge">alpha</span>
     <div class="pill"><div class="dot dot-b"></div><div><div class="plbl">My Lap</div><div class="pval" id="h-tb" style="font-size:20px">—</div></div></div>
     <div class="pill"><div class="dot dot-a"></div><div><div class="plbl">Reference</div><div class="pval" id="h-ta" style="font-size:20px">—</div></div></div>
     <div class="dpill"><div class="dv" id="h-dt" style="font-size:20px">—</div><div class="dl">My Lap vs Ref</div></div>
@@ -268,15 +351,30 @@ header{flex-shrink:0;height:46px;display:flex;align-items:center;gap:11px;paddin
           </div>
         </div>
         <div class="ov-r">
-          <canvas id="cv-map"></canvas>
-          <div class="map-ctrl">
-            <button class="mc on" id="mc-d" onclick="setMM('delta')">Delta</button>
-            <button class="mc" id="mc-a" onclick="setMM('spa')">Speed Ref</button>
-            <button class="mc" id="mc-b" onclick="setMM('spb')">Speed My</button>
+          <div class="map-wrap">
+            <canvas id="cv-map"></canvas>
+            <div class="map-ctrl">
+              <button class="mc on" id="mc-d" onclick="setMM('delta')">Delta</button>
+              <button class="mc" id="mc-a" onclick="setMM('spa')">Speed Ref</button>
+              <button class="mc" id="mc-b" onclick="setMM('spb')">Speed My</button>
+            </div>
+            <div class="map-leg">
+              <div class="ml-ttl" id="ml-t"></div>
+              <div class="ml-row"><span id="ml-lo"></span><canvas class="ml-bar" id="cv-mleg" height="6"></canvas><span id="ml-hi"></span></div>
+            </div>
           </div>
-          <div class="map-leg">
-            <div class="ml-ttl" id="ml-t"></div>
-            <div class="ml-row"><span id="ml-lo"></span><canvas class="ml-bar" id="cv-mleg" height="6"></canvas><span id="ml-hi"></span></div>
+          <div class="ai-section" id="ai-section">
+            <div class="ai-section-hdr">
+              <span class="ai-section-ttl">🤖 AI Coach</span>
+              <span class="ai-remaining" id="ai-remaining"></span>
+            </div>
+            <div class="ai-scroll" id="ai-scroll">
+              <div class="ai-grid" id="ai-grid">
+                <div class="ai-gen-row" id="ai-gen-row" style="grid-column:1/-1">
+                  <button class="ai-btn" id="ai-gen-btn" onclick="generateAICoaching()">Generate AI Analysis</button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -520,14 +618,18 @@ function doLogout(){
 const COL_MY='#ff6b1a', COL_REF='#00bcd4';  // My Lap=orange, Ref=teal
 const S={csvA:{},csvB:{},selA:null,selB:null,lapA:null,lapB:null,
   delta:[],deltaRate:[],maxDeltaRate:0.001,segs:[],activeSeg:-1,mapMode:'delta',cursorD:null,
-  gpsA:[],gpsB:[],gpsScale:null};
+  gpsA:[],gpsB:[],gpsScale:null,venue:''};
 
 // ── PARSER ────────────────────────────────────────────────────
 function parseMoTeC(text){
   const lines=text.split(/\r?\n/);
   // Extract sample rate from metadata
   let csvSampleRate=100;
-  for(let i=0;i<15;i++){if(lines[i]&&lines[i].includes('Sample Rate')){const m=lines[i].match(/"(\d+\.?\d*)"/);if(m)csvSampleRate=parseFloat(m[1]);break;}}
+  let csvVenue='';
+  for(let i=0;i<15;i++){
+    if(lines[i]&&lines[i].includes('Sample Rate')){const m=lines[i].match(/"(\d+\.?\d*)"/);if(m)csvSampleRate=parseFloat(m[1]);}
+    if(lines[i]&&lines[i].includes('"Venue"')){const m=lines[i].match(/"Venue"\s*,\s*"([^"]+)"/);if(m)csvVenue=m[1];}
+  }
   let hi=-1;
   for(let i=0;i<30;i++){if(lines[i]&&lines[i].includes('"Time"')&&lines[i].includes('"Distance"')){hi=i;break;}}
   if(hi<0)throw new Error('No valid MoTeC header found');
@@ -626,7 +728,285 @@ function parseMoTeC(text){
   const warnings=[];
   if(!hasLapDist)warnings.push('⚠ No "Lap Distance" — computed from Distance. Enable "Output Distance" in MoTeC export for best accuracy.');
   if(csvSampleRate<100)warnings.push('⚠ Sample rate: '+csvSampleRate+'Hz. Set to 100Hz in MoTeC export (damplugin.ini) for smoother data.');
-  result._meta={warnings,sampleRate:csvSampleRate,hasLapDist};
+  result._meta={warnings,sampleRate:csvSampleRate,hasLapDist,venue:csvVenue};
+  return result;
+}
+
+// ── LD BINARY PARSER ──────────────────────────────────────────
+function parseLdFile(buf){
+  const dv=new DataView(buf);
+  const dec=new TextDecoder('ascii');
+  function rStr(off,len){
+    const bytes=new Uint8Array(buf,off,len);
+    let end=bytes.indexOf(0);if(end<0)end=len;
+    return dec.decode(bytes.slice(0,end)).trim();
+  }
+
+  // ── Header (1762 bytes) ──
+  const metaPtr=dv.getUint32(8,true);
+  const dataPtr=dv.getUint32(12,true);
+  const eventPtr=dv.getUint32(36,true);
+  const numChan=dv.getUint32(86,true);
+  const dateStr=rStr(94,16);
+  const timeStr=rStr(126,16);
+  const driver=rStr(158,64);
+  const vehicleId=rStr(222,64);
+  const venue=rStr(350,64);
+
+  // ── Event (at eventPtr) ──
+  let eventName='',session='';
+  if(eventPtr>0&&eventPtr+130<buf.byteLength){
+    eventName=rStr(eventPtr,64);
+    session=rStr(eventPtr+64,64);
+  }
+
+  // ── Read channel linked list ──
+  const channels=[];
+  let cPtr=metaPtr;
+  let safety=0;
+  while(cPtr>0&&cPtr<buf.byteLength-84&&safety++<500){
+    const off=cPtr;
+    const prevAddr=dv.getUint32(off,true);
+    const nextAddr=dv.getUint32(off+4,true);
+    const chanDataPtr=dv.getUint32(off+8,true);
+    const nData=dv.getUint32(off+12,true);
+    const dtypeA=dv.getUint16(off+18,true);
+    const dtypeVal=dv.getUint16(off+20,true);
+    const freq=dv.getUint16(off+22,true);
+    const shift=dv.getInt16(off+24,true);
+    const mul=dv.getInt16(off+26,true);
+    const scale=dv.getInt16(off+28,true);
+    const decPlaces=dv.getInt16(off+30,true);
+    const name=rStr(off+32,32);
+    const shortName=rStr(off+64,8);
+    const unit=rStr(off+72,12);
+
+    // Determine JS typed array constructor + byte width
+    // dtype value = byte width: 1=int8, 2=int16/float16, 4=int32/float32, 8=float64
+    let TypedArr=null,byteWidth=0;
+    if(dtypeA===0x07){
+      if(dtypeVal===2){TypedArr=null;byteWidth=2;} // float16 - handle manually
+      else if(dtypeVal===4){TypedArr=Float32Array;byteWidth=4;}
+    }else if(dtypeA===0||dtypeA===0x03||dtypeA===0x05){
+      if(dtypeVal===1){TypedArr=Int8Array;byteWidth=1;}
+      else if(dtypeVal===2){TypedArr=Int16Array;byteWidth=2;}
+      else if(dtypeVal===4){TypedArr=Int32Array;byteWidth=4;}
+    }else if(dtypeA===0x08&&dtypeVal===0x08){
+      TypedArr=Float64Array;byteWidth=8;
+    }
+
+    let data=null;
+    if(byteWidth>0&&chanDataPtr>0&&nData>0&&chanDataPtr+nData*byteWidth<=buf.byteLength){
+      if(dtypeA===0x07&&dtypeVal===2){
+        // Float16 — manual decode
+        data=new Float32Array(nData);
+        for(let i=0;i<nData;i++){
+          const h=dv.getUint16(chanDataPtr+i*2,true);
+          const s=(h>>15)&1,e=(h>>10)&0x1f,m=h&0x3ff;
+          if(e===0)data[i]=(s?-1:1)*Math.pow(2,-14)*(m/1024);
+          else if(e===31)data[i]=m?NaN:(s?-Infinity:Infinity);
+          else data[i]=(s?-1:1)*Math.pow(2,e-15)*(1+m/1024);
+        }
+      }else if(TypedArr){
+        const raw=new TypedArr(buf.slice(chanDataPtr,chanDataPtr+nData*byteWidth));
+        data=new Float64Array(nData);
+        for(let i=0;i<nData;i++)data[i]=raw[i];
+      }
+
+      // Apply conversion: value = raw * mul / scale * 10^(-dec) + shift
+      // Note: shift is an absolute offset AFTER scaling, not multiplied by mul
+      if(data&&(scale!==1||decPlaces!==0||shift!==0||mul!==1)){
+        const s=scale||1,m=mul||1,p=Math.pow(10,-decPlaces);
+        for(let i=0;i<data.length;i++){
+          data[i]=data[i]*m/s*p+shift;
+        }
+      }
+    }
+
+    channels.push({name,shortName,unit,freq,nData,data});
+    cPtr=nextAddr;
+  }
+
+  if(channels.length===0)throw new Error('No channels found in .ld file');
+
+  // ── Map channel names to our expected columns ──
+  const chanMap={};
+  const wanted=['Time','Distance','Ground Speed','Throttle Pos','Brake Pos','Gear',
+    'G Force Lat','GPS Latitude','GPS Longitude','Lap Number','Lap Distance',
+    'Session Elapsed Time','Path Lateral','Steering Filtered','Steering Pos',
+    'Steering','Steering Wheel Position','Lap Start Elapsed Time','Track Edge'];
+  channels.forEach(ch=>{
+    if(wanted.includes(ch.name)&&ch.data)chanMap[ch.name]=ch;
+  });
+  // Steering fallbacks: Steering Filtered > Steering Pos > Steering Wheel Position > Steering
+  if(!chanMap['Steering Filtered']){
+    chanMap['Steering Filtered']=chanMap['Steering Pos']||chanMap['Steering Wheel Position']||chanMap['Steering'];
+  }
+
+  if(!chanMap['Lap Number'])throw new Error('No "Lap Number" channel in .ld file. Is this an rF2 MoTeC log?');
+  if(!chanMap['Ground Speed'])throw new Error('No "Ground Speed" channel in .ld file.');
+
+  // ── Determine base frequency (highest among wanted channels) ──
+  let baseFreq=0;
+  Object.values(chanMap).forEach(ch=>{if(ch&&ch.freq>baseFreq)baseFreq=ch.freq;});
+  if(baseFreq<=0)baseFreq=100;
+
+  // Find the channel with baseFreq to determine total sample count
+  let baseSamples=0;
+  Object.values(chanMap).forEach(ch=>{if(ch&&ch.freq===baseFreq&&ch.nData>baseSamples)baseSamples=ch.nData;});
+
+  // ── Build rows at base frequency ──
+  // Discrete channels (must NOT interpolate - use nearest)
+  const discreteChans=new Set(['Lap Number','Gear','Beacon','Marker']);
+  function getSample(ch,i){
+    if(!ch||!ch.data)return 0;
+    if(ch.freq===baseFreq)return i<ch.data.length?ch.data[i]:0;
+    const fi=i*ch.freq/baseFreq;
+    const lo=Math.min(Math.floor(fi),ch.data.length-1);
+    if(discreteChans.has(ch.name))return ch.data[lo];
+    // Linear interpolation for continuous channels
+    const hi=Math.min(lo+1,ch.data.length-1);
+    const t=fi-Math.floor(fi);
+    return ch.data[lo]*(1-t)+ch.data[hi]*t;
+  }
+
+  // If no 'Time' channel, synthesize from frequency
+  const hasTime=!!chanMap['Time'];
+  // If no 'Session Elapsed Time', use Time
+  const hasSET=!!chanMap['Session Elapsed Time'];
+
+  const laps={};
+  const lapStartETs={};
+
+  for(let i=0;i<baseSamples;i++){
+    const ln=Math.round(getSample(chanMap['Lap Number'],i));
+    if(isNaN(ln))continue;
+    if(!laps[ln])laps[ln]=[];
+
+    const row={};
+    Object.keys(chanMap).forEach(k=>{if(chanMap[k])row[k]=getSample(chanMap[k],i);});
+    // Synthesize Time if missing
+    if(!hasTime)row['Time']=i/baseFreq;
+    // Synthesize Session Elapsed Time if missing
+    if(!hasSET)row['Session Elapsed Time']=row['Time']||(i/baseFreq);
+    laps[ln].push(row);
+  }
+
+  // ── Compute Lap Distance from Ground Speed if not available ──
+  const hasLapDist=!!chanMap['Lap Distance'];
+  const hasDist=!!chanMap['Distance'];
+  if(!hasLapDist){
+    if(hasDist){
+      // Fallback: compute from cumulative Distance column
+      Object.keys(laps).forEach(ln=>{
+        const rows=laps[ln];if(rows.length<2)return;
+        const d0=rows[0]['Distance']||0;
+        rows.forEach(r=>{r['Lap Distance']=(r['Distance']||0)-d0;});
+      });
+    }else{
+      // No distance channels at all — integrate from Ground Speed
+      const dt=1/baseFreq;
+      Object.keys(laps).forEach(ln=>{
+        const rows=laps[ln];if(rows.length<2)return;
+        rows[0]['Lap Distance']=0;
+        for(let i=1;i<rows.length;i++){
+          const spd=(rows[i]['Ground Speed']||0)/3.6; // km/h → m/s
+          rows[i]['Lap Distance']=rows[i-1]['Lap Distance']+spd*dt;
+        }
+      });
+    }
+  }
+
+  // ── Smooth Session Elapsed Time if resolution is too coarse ──
+  // In .ld files, SET is often stored as integer seconds. We need sub-second
+  // precision for delta computation. Synthesize smooth timing from sample index.
+  Object.keys(laps).forEach(ln=>{
+    const rows=laps[ln];if(rows.length<2)return;
+    const setStart=rows[0]['Session Elapsed Time']||0;
+    const setEnd=rows[rows.length-1]['Session Elapsed Time']||0;
+    const actualSpan=setEnd-setStart;
+    const expectedSpan=(rows.length-1)/baseFreq;
+    // If SET resolution is coarser than 0.5s, smooth it
+    if(actualSpan>0&&Math.abs(actualSpan-expectedSpan)<2){
+      for(let i=0;i<rows.length;i++){
+        rows[i]['Session Elapsed Time']=setStart+i/baseFreq;
+      }
+    }
+  });
+
+  // ── Collect lap start times ──
+  Object.keys(laps).forEach(ln=>{
+    const rows=laps[ln];if(rows.length<1)return;
+    lapStartETs[ln]=rows[0]['Lap Start Elapsed Time']||rows[0]['Session Elapsed Time']||0;
+  });
+
+  // ── Process each lap (same logic as CSV parser) ──
+  const result={};
+  Object.keys(laps).forEach(ln=>{
+    const rows=laps[ln];if(rows.length<10)return;
+    const lapStartET=rows[0]['Lap Start Elapsed Time']||rows[0]['Session Elapsed Time']||0;
+
+    let peakIdx=0,peakLD=rows[0]['Lap Distance']||0;
+    for(let i=1;i<rows.length;i++){
+      if((rows[i]['Lap Distance']||0)>peakLD){peakLD=rows[i]['Lap Distance'];peakIdx=i;}
+    }
+
+    let countdownStart=-1;
+    for(let i=peakIdx+1;i<rows.length;i++){
+      if((rows[i]['Lap Distance']||0)-(rows[i-1]['Lap Distance']||0)<-100){countdownStart=i;break;}
+    }
+    if(countdownStart>0){
+      const peakDist=rows[peakIdx]['Distance']||0;
+      for(let i=countdownStart;i<rows.length;i++){
+        rows[i]['Lap Distance']=peakLD+((rows[i]['Distance']||0)-peakDist);
+      }
+    }
+
+    const clean=rows.filter(r=>(r['Lap Distance']||0)>=0);
+    clean.sort((a,b)=>(a['Lap Distance']||0)-(b['Lap Distance']||0));
+    if(clean.length<10)return;
+
+    // Filter gear=0 during shifts
+    let lastGear=0;
+    for(let i=0;i<clean.length;i++){
+      const g=clean[i]['Gear']||0;
+      if(g===0&&(clean[i]['Ground Speed']||0)>5)clean[i]['Gear']=lastGear;
+      else lastGear=g;
+    }
+
+    // Compute lap time
+    // For .ld files, SET often has only 1s resolution. Use sample count for precision.
+    const sortedLns=Object.keys(lapStartETs).map(Number).sort((a,b)=>a-b);
+    const lnNum=+ln;
+    const nextLnIdx=sortedLns.indexOf(lnNum)+1;
+    let lapTime;
+    if(nextLnIdx>0&&nextLnIdx<sortedLns.length){
+      // Complete lap: use sample count for sub-second precision
+      lapTime=rows.length/baseFreq;
+    }else{
+      const lastRow=clean[clean.length-1];
+      const elapsed=(lastRow['Session Elapsed Time']||0)-lapStartET;
+      const lastLD=lastRow['Lap Distance']||0;
+      const estTrackLen=peakLD+10;
+      const remaining=Math.max(0,estTrackLen-lastLD);
+      const tail=clean.slice(-Math.min(100,clean.length));
+      const avgSpd=tail.reduce((s,r)=>s+(r['Ground Speed']||0),0)/tail.length;
+      const remainTime=avgSpd>10?remaining/(avgSpd/3.6):0;
+      lapTime=elapsed+remainTime;
+    }
+
+    result[ln]={rows:clean,lapTime,lapStartET,computedLD:!hasLapDist};
+  });
+
+  const warnings=[];
+  if(!hasLapDist&&hasDist)warnings.push('⚠ No "Lap Distance" channel — computed from Distance column.');
+  if(!hasLapDist&&!hasDist)warnings.push('⚠ No distance channels — Lap Distance integrated from Ground Speed. Minor drift possible.');
+  // LD files store channels at different rates (e.g. Ground Speed at 10Hz, SET at 50Hz) — this is normal
+  // Only warn if the key telemetry channels are very low rate
+  const gsFreq=chanMap['Ground Speed']?chanMap['Ground Speed'].freq:0;
+  if(gsFreq>0&&gsFreq<10)warnings.push('⚠ Ground Speed channel at '+gsFreq+'Hz — data may be coarse.');
+  warnings.push('ℹ Loaded from .ld binary — '+channels.length+' channels, '+baseFreq+'Hz base rate, telemetry at '+gsFreq+'Hz');
+  result._meta={warnings,sampleRate:baseFreq,hasLapDist,venue,driver,vehicleId,eventName,session};
   return result;
 }
 
@@ -640,10 +1020,11 @@ function parseMoTeC(text){
 });
 
 function rdFile(file,side){
+  const isLd=file.name.toLowerCase().endsWith('.ld');
   const r=new FileReader();
   r.onload=e=>{
     try{
-      const data=parseMoTeC(e.target.result);
+      const data=isLd?parseLdFile(e.target.result):parseMoTeC(e.target.result);
       if(side==='a'){S.csvA=data;document.getElementById('fn-a').textContent=file.name;document.getElementById('dz-a').classList.add('ok-a');}
       else{S.csvB=data;document.getElementById('fn-b').textContent=file.name;document.getElementById('dz-b').classList.add('ok-b');}
       // Show warnings if any
@@ -655,7 +1036,8 @@ function rdFile(file,side){
       mkLapList(side,data);
     }catch(err){alert('Load error: '+err.message);}
   };
-  r.readAsText(file);
+  if(isLd)r.readAsArrayBuffer(file);
+  else r.readAsText(file);
 }
 
 function mkLapList(side,data){
@@ -683,8 +1065,10 @@ function pickLap(side,ln,el){
 // ── ANALYSIS ENTRY ────────────────────────────────────────────
 // ── DISTANCE ALIGNMENT — GPS-based calibration ────────────────
 function alignLapDistance(){
-  // Only align if at least one lap has computed (non-native) Lap Distance
+  // Only align if exactly one lap has computed (non-native) Lap Distance
+  // When both are computed (e.g. both from .ld), no cross-source alignment needed
   if(!S.lapA.computedLD&&!S.lapB.computedLD)return;
+  if(S.lapA.computedLD&&S.lapB.computedLD)return;
   // Determine which lap is native (trusted) and which is computed
   const native=S.lapA.computedLD?S.lapB:S.lapA;
   const computed=S.lapA.computedLD?S.lapA:S.lapB;
@@ -712,6 +1096,18 @@ function alignLapDistance(){
 function startAnalysis(){
   S.lapA=S.csvA[S.selA];S.lapB=S.csvB[S.selB];
   if(!S.lapA||!S.lapB)return;
+  // Warn when mixing .ld (speed-integrated distance) with CSV (native distance)
+  const _fA=(document.getElementById('fn-a').textContent||'').toLowerCase();
+  const _fB=(document.getElementById('fn-b').textContent||'').toLowerCase();
+  const ldA=_fA.endsWith('.ld'),ldB=_fB.endsWith('.ld');
+  if(ldA!==ldB){
+    document.getElementById('mix-modal').classList.add('show');
+    return;
+  }
+  doStartAnalysis();
+}
+function doStartAnalysis(){
+  if(!S.lapA||!S.lapB)return;
   alignLapDistance(); // Fix distance offset between laps
   computeDelta();mkGPS();buildSegs();
   document.getElementById('upload-screen').style.display='none';
@@ -722,9 +1118,16 @@ function startAnalysis(){
   const el=document.getElementById('h-dt');
   el.textContent=(d>=0?'+':'')+d.toFixed(3)+'s';
   el.style.color=d>0?'var(--red)':'var(--green)';
-  // Extract venue from CSV metadata if available
+  // Extract venue from CSV/LD metadata or filename
   const fnA=document.getElementById('fn-a').textContent||'';
   const fnB=document.getElementById('fn-b').textContent||'';
+  S.venue=(S.csvA._meta&&S.csvA._meta.venue)||(S.csvB._meta&&S.csvB._meta.venue)||'';
+  if(!S.venue){
+    // Try to extract from filename (e.g. "20260309__225035__Suzuka_International_Racing_Course_GPVWC__P1.csv")
+    const fn=fnA||fnB;
+    const m=fn.match(/__([\w_]+?)(?:__|\.\w+$)/g);
+    if(m&&m.length>1){S.venue=m[1].replace(/__/g,'').replace(/_/g,' ');}
+  }
   logSession('analysis',{
     fileA:fnA,fileB:fnB,
     lapA:{lap:S.selA,time:S.lapA.lapTime?+S.lapA.lapTime.toFixed(3):0},
@@ -733,6 +1136,7 @@ function startAnalysis(){
     segments:S.segs.length
   });
   goView('ov');
+  initAISection();
 }
 
 // ── DELTA ─────────────────────────────────────────────────────
@@ -759,7 +1163,10 @@ function computeDelta(){
   const resB=rB.filter(r=>r['Lap Distance']>=startD&&r['Lap Distance']<=maxD).length/(tValsB.size||1);
   // Smooth window: more samples per unique time = coarser = more smoothing needed
   const coarseness=Math.max(resA,resB);
-  const smoothW=coarseness>3?Math.min(60,Math.round(coarseness*3)):0;
+  let smoothW=coarseness>3?Math.min(60,Math.round(coarseness*3)):0;
+  // For .ld files with speed-integrated distance, always apply minimum smoothing
+  // The underlying Ground Speed channel is typically 10Hz which causes delta noise
+  if(smoothW<5&&(S.lapA.computedLD||S.lapB.computedLD))smoothW=5;
   S.delta=[];
   if(smoothW>1){
     for(let i=0;i<raw.length;i++){
@@ -1013,6 +1420,24 @@ function mkSegBar(){
   });
 }
 
+// Highlight segment card when cursor hovers over its distance range in the graphs
+function highlightHoverSeg(){
+  const cards=document.querySelectorAll('#seg-scroll .sc');
+  if(S.cursorD===null){cards.forEach(c=>c.classList.remove('graph-hover'));return;}
+  let found=-1;
+  for(let i=0;i<S.segs.length;i++){
+    if(S.cursorD>=S.segs[i].d0&&S.cursorD<=S.segs[i].d1){found=i;break;}
+  }
+  cards.forEach((c,i)=>{
+    if(i===found)c.classList.add('graph-hover');
+    else c.classList.remove('graph-hover');
+  });
+  // Scroll highlighted card into view
+  if(found>=0&&cards[found]){
+    cards[found].scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
+  }
+}
+
 // Mini track outline on segment card — shows WHERE on the track
 function drawSegTrack(idx,seg){
   const c=document.getElementById('trk'+idx);if(!c||S.gpsA.length<20)return;
@@ -1098,13 +1523,13 @@ function renderDeltaTrace(){
   if(S.cursorD!==null){ctx.strokeStyle='rgba(255,255,255,.35)';ctx.lineWidth=1;ctx.setLineDash([3,3]);ctx.beginPath();ctx.moveTo(tx(S.cursorD),p.t);ctx.lineTo(tx(S.cursorD),p.t+ph);ctx.stroke();ctx.setLineDash([]);}
   cv.onmousemove=e=>{
     const r=cv.getBoundingClientRect();const mx=e.clientX-r.left-p.l;
-    if(mx<0||mx>pw){hideTip();S.cursorD=null;renderDeltaTrace();renderSpdTrace();renderMap();return;}
+    if(mx<0||mx>pw){hideTip();S.cursorD=null;renderDeltaTrace();renderSpdTrace();renderMap();highlightHoverSeg();return;}
     S.cursorD=(mx/pw)*maxD;
     const dval=getDelta(S.cursorD),vA=iD(S.lapA.rows,S.cursorD,'Ground Speed'),vB=iD(S.lapB.rows,S.cursorD,'Ground Speed');
     showTip(e.clientX,e.clientY,[['Distance',Math.round(S.cursorD)+'m'],['Delta My−Ref',{v:(dval>=0?'+':'')+dval.toFixed(3)+'s',c:dval>0?'var(--red)':'var(--green)'}],['Speed My',{v:vB.toFixed(0)+' km/h',c:COL_MY}],['Speed Ref',{v:vA.toFixed(0)+' km/h',c:COL_REF}]]);
-    renderDeltaTrace();renderSpdTrace();renderMap();
+    renderDeltaTrace();renderSpdTrace();renderMap();highlightHoverSeg();
   };
-  cv.onmouseleave=()=>{hideTip();S.cursorD=null;renderDeltaTrace();renderSpdTrace();renderMap();};
+  cv.onmouseleave=()=>{hideTip();S.cursorD=null;renderDeltaTrace();renderSpdTrace();renderMap();highlightHoverSeg();};
 }
 
 // Speed trace (overview)
@@ -1114,13 +1539,13 @@ function renderSpdTrace(){
   const p={l:46,r:14};
   cv.onmousemove=e=>{
     const r=cv.getBoundingClientRect();const mx=e.clientX-r.left-p.l;const pw=cv.width-p.l-p.r;
-    if(mx<0||mx>pw){hideTip();S.cursorD=null;renderDeltaTrace();renderSpdTrace();renderMap();return;}
+    if(mx<0||mx>pw){hideTip();S.cursorD=null;renderDeltaTrace();renderSpdTrace();renderMap();highlightHoverSeg();return;}
     const maxD=S.delta[S.delta.length-1].d;S.cursorD=(mx/pw)*maxD;
     const vA=iD(S.lapA.rows,S.cursorD,'Ground Speed'),vB=iD(S.lapB.rows,S.cursorD,'Ground Speed');
     showTip(e.clientX,e.clientY,[['Distance',Math.round(S.cursorD)+'m'],['Speed My',{v:vB.toFixed(0)+' km/h',c:COL_MY}],['Speed Ref',{v:vA.toFixed(0)+' km/h',c:COL_REF}],['Diff',{v:(vB-vA>=0?'+':'')+(vB-vA).toFixed(1)+' km/h',c:vB-vA>0?'var(--green)':'var(--red)'}]]);
-    renderDeltaTrace();renderSpdTrace();renderMap();
+    renderDeltaTrace();renderSpdTrace();renderMap();highlightHoverSeg();
   };
-  cv.onmouseleave=()=>{hideTip();S.cursorD=null;renderDeltaTrace();renderSpdTrace();renderMap();};
+  cv.onmouseleave=()=>{hideTip();S.cursorD=null;renderDeltaTrace();renderSpdTrace();renderMap();highlightHoverSeg();};
 }
 
 // Generic overlay (used by both overview and detail)
@@ -1655,13 +2080,402 @@ function hideTip(){tipEl.style.display='none';}
 function doReset(){
   document.getElementById('upload-screen').style.display='flex';
   document.getElementById('app').style.display='none';
-  Object.assign(S,{csvA:{},csvB:{},selA:null,selB:null,lapA:null,lapB:null,delta:[],deltaRate:[],maxDeltaRate:0.001,segs:[],activeSeg:-1,cursorD:null,gpsA:[],gpsB:[],gpsScale:null,mapMode:'delta'});
-  ['a','b'].forEach(s=>{document.getElementById('lb-'+s).style.display='none';document.getElementById('dz-'+s).className='dz';document.getElementById('fn-'+s).textContent='Drop CSV here or click';document.getElementById('fi-'+s).value='';document.getElementById('warn-'+s).style.display='none';});
+  Object.assign(S,{csvA:{},csvB:{},selA:null,selB:null,lapA:null,lapB:null,delta:[],deltaRate:[],maxDeltaRate:0.001,segs:[],activeSeg:-1,cursorD:null,gpsA:[],gpsB:[],gpsScale:null,mapMode:'delta',venue:''});
+  ['a','b'].forEach(s=>{document.getElementById('lb-'+s).style.display='none';document.getElementById('dz-'+s).className='dz';document.getElementById('fn-'+s).textContent='Drop CSV / LD here or click';document.getElementById('fi-'+s).value='';document.getElementById('warn-'+s).style.display='none';});
   document.getElementById('btn-go').classList.remove('rdy');
+  // Reset AI section
+  const grid=document.getElementById('ai-grid');
+  const genRow=document.getElementById('ai-gen-row');
+  if(grid&&genRow){grid.innerHTML='';grid.appendChild(genRow);genRow.style.display='flex';}
+}
+
+// ── AI COACH ─────────────────────────────────────────────────
+// Find segment index from AI response segment name (may include type/distance info)
+function findSegIdx(segName){
+  if(!segName||!S.segs.length)return -1;
+  // Exact match first
+  let si=S.segs.findIndex(s=>(s.label||('Seg'+(s.i+1)))===segName);
+  if(si>=0)return si;
+  // Extract just the SegN part from the AI response (e.g. "Seg9 (straight, 5712-5778m)" → "Seg9")
+  const m=segName.match(/^(Seg\d+)/i);
+  if(m){
+    si=S.segs.findIndex(s=>(s.label||('Seg'+(s.i+1)))===m[1]);
+    if(si>=0)return si;
+  }
+  // Try partial match — segment name starts with any known label
+  for(let i=0;i<S.segs.length;i++){
+    const lbl=S.segs[i].label||('Seg'+(S.segs[i].i+1));
+    if(segName.startsWith(lbl))return i;
+  }
+  return -1;
+}
+
+// Draw mini track on AI card canvas — shows WHERE on the circuit
+function drawAICardTrack(canvas,segIdx){
+  if(!canvas||S.gpsA.length<20||!S.gpsScale||segIdx<0)return;
+  const seg=S.segs[segIdx];if(!seg)return;
+  const ctx=canvas.getContext('2d');
+  const W=canvas.width,H=canvas.height;
+  ctx.clearRect(0,0,W,H);
+  const sc=S.gpsScale,mg=3;
+  // Full track dim
+  ctx.strokeStyle='#2d4a60';ctx.lineWidth=1.5;ctx.lineJoin='round';ctx.lineCap='round';
+  ctx.beginPath();
+  S.gpsA.forEach((p,i)=>{const c=toXY(p.lat,p.lon,sc,W,H,mg);i===0?ctx.moveTo(c.x,c.y):ctx.lineTo(c.x,c.y);});
+  ctx.stroke();
+  // Highlight segment with glow
+  const segPts=S.gpsA.filter(p=>p.d>=seg.d0&&p.d<=seg.d1);
+  if(segPts.length>1){
+    const col=seg.loss>0?'#ff3d5a':'#00e676';
+    ctx.save();ctx.shadowColor=col;ctx.shadowBlur=5;
+    ctx.strokeStyle=col;ctx.lineWidth=3;ctx.beginPath();
+    segPts.forEach((p,i)=>{const c=toXY(p.lat,p.lon,sc,W,H,mg);i===0?ctx.moveTo(c.x,c.y):ctx.lineTo(c.x,c.y);});
+    ctx.stroke();ctx.restore();
+  }
+}
+
+// AI limits — fetched from Firestore config/aiLimits, with fallbacks
+let AI_DAILY_LIMIT=5;
+let AI_PREMIUM_LIMIT=50;
+
+async function loadAILimits(){
+  try{
+    const doc=await db.collection('config').doc('aiLimits').get();
+    if(doc.exists){
+      const d=doc.data();
+      if(d.daily!=null)AI_DAILY_LIMIT=d.daily;
+      if(d.premium!=null)AI_PREMIUM_LIMIT=d.premium;
+    }
+  }catch(e){/* use defaults */}
+}
+
+async function getAIUsageToday(){
+  if(!currentUser)return AI_DAILY_LIMIT;
+  const uid=currentUser.uid;
+  const today=new Date().toISOString().slice(0,10);
+  try{
+    const doc=await db.collection('users').doc(uid).collection('ai_usage').doc(today).get();
+    return doc.exists?doc.data().count||0:0;
+  }catch(e){return 0;}
+}
+
+async function incrementAIUsage(){
+  if(!currentUser)return;
+  const uid=currentUser.uid;
+  const today=new Date().toISOString().slice(0,10);
+  try{
+    await db.collection('users').doc(uid).collection('ai_usage').doc(today).set({
+      count:firebase.firestore.FieldValue.increment(1),
+      lastUsed:firebase.firestore.FieldValue.serverTimestamp()
+    },{merge:true});
+  }catch(e){}
+}
+
+async function isPremiumUser(){
+  if(!currentUser)return false;
+  try{
+    const doc=await db.collection('users').doc(currentUser.uid).get();
+    return doc.exists&&doc.data().premium===true;
+  }catch(e){return false;}
+}
+
+async function initAISection(){
+  await loadAILimits();
+  const remaining=document.getElementById('ai-remaining');
+  const genBtn=document.getElementById('ai-gen-btn');
+  const grid=document.getElementById('ai-grid');
+  const genRow=document.getElementById('ai-gen-row');
+
+  const used=await getAIUsageToday();
+  const premium=await isPremiumUser();
+  const limit=premium?AI_PREMIUM_LIMIT:AI_DAILY_LIMIT;
+  const left=Math.max(0,limit-used);
+  remaining.textContent=left+'/'+limit+' left today';
+
+  genRow.style.display='flex';
+  if(left<=0){
+    genBtn.disabled=true;
+    genBtn.textContent='Daily limit reached';
+  }else{
+    genBtn.disabled=false;
+    genBtn.textContent='Generate AI Analysis';
+  }
+  grid.innerHTML='';
+  grid.appendChild(genRow);
+}
+
+function buildAIPrompt(){
+  if(!S.lapA||!S.lapB||!S.segs.length)return null;
+  const lapTimeA=S.lapA.lapTime, lapTimeB=S.lapB.lapTime;
+  const delta=lapTimeB-lapTimeA;
+  const fnA=document.getElementById('fn-a').textContent||'Reference';
+  const fnB=document.getElementById('fn-b').textContent||'My Lap';
+
+  const segData=S.segs.map(seg=>{
+    const rA=S.lapA.rows,rB=S.lapB.rows;
+    const d0=seg.d0,d1=seg.d1;
+    const eA=iD(rA,d0,'Ground Speed'),eB=iD(rB,d0,'Ground Speed');
+    const xA=iD(rA,d1,'Ground Speed'),xB=iD(rB,d1,'Ground Speed');
+    const segRowsA=rA.filter(r=>r['Lap Distance']>=d0&&r['Lap Distance']<=d1);
+    const segRowsB=rB.filter(r=>r['Lap Distance']>=d0&&r['Lap Distance']<=d1);
+    const brA=segRowsA.filter(r=>r['Brake Pos']>5).length;
+    const brB=segRowsB.filter(r=>r['Brake Pos']>5).length;
+    const totA=segRowsA.length,totB=segRowsB.length;
+    const minSpdA=Math.min(...segRowsA.map(r=>r['Ground Speed']));
+    const minSpdB=Math.min(...segRowsB.map(r=>r['Ground Speed']));
+    const maxSpdA=Math.max(...segRowsA.map(r=>r['Ground Speed']));
+    const maxSpdB=Math.max(...segRowsB.map(r=>r['Ground Speed']));
+
+    // Find brake point: first point where Brake > 10% (searching from start of segment)
+    const brkPtA=segRowsA.find(r=>r['Brake Pos']>10);
+    const brkPtB=segRowsB.find(r=>r['Brake Pos']>10);
+    const brkDistA=brkPtA?Math.round(brkPtA['Lap Distance']):'—';
+    const brkDistB=brkPtB?Math.round(brkPtB['Lap Distance']):'—';
+
+    // Find throttle application point: first point where Throttle > 50% after min speed point
+    const minIdxA=segRowsA.reduce((mi,r,i,a)=>r['Ground Speed']<a[mi]['Ground Speed']?i:mi,0);
+    const minIdxB=segRowsB.reduce((mi,r,i,a)=>r['Ground Speed']<a[mi]['Ground Speed']?i:mi,0);
+    const thrPtA=segRowsA.slice(minIdxA).find(r=>r['Throttle Pos']>50);
+    const thrPtB=segRowsB.slice(minIdxB).find(r=>r['Throttle Pos']>50);
+    const thrDistA=thrPtA?Math.round(thrPtA['Lap Distance']):'—';
+    const thrDistB=thrPtB?Math.round(thrPtB['Lap Distance']):'—';
+
+    // Gear at apex (min speed)
+    const gearApexA=segRowsA.length>0?Math.round(segRowsA[minIdxA]['Gear']):'—';
+    const gearApexB=segRowsB.length>0?Math.round(segRowsB[minIdxB]['Gear']):'—';
+
+    // Delta at segment midpoint for within-segment progression
+    const dMid=(d0+d1)/2;
+    const dAtStart=getDelta(d0),dAtMid=getDelta(dMid),dAtEnd=getDelta(d1);
+    const lossFirstHalf=((dAtMid-dAtStart)*1000|0)/1000;
+    const lossSecondHalf=((dAtEnd-dAtMid)*1000|0)/1000;
+
+    return{
+      name:seg.label||('Seg'+(seg.i+1)),type:seg.type,
+      dist:Math.round(d0)+'–'+Math.round(d1)+'m',
+      loss:seg.loss.toFixed(3),
+      entrySpd:{my:Math.round(eB),ref:Math.round(eA)},
+      exitSpd:{my:Math.round(xB),ref:Math.round(xA)},
+      minSpd:{my:Math.round(minSpdB),ref:Math.round(minSpdA)},
+      maxSpd:{my:Math.round(maxSpdB),ref:Math.round(maxSpdA)},
+      brakeRatio:{my:totB>0?Math.round(brB/totB*100):0,ref:totA>0?Math.round(brA/totA*100):0},
+      brakePt:{my:brkDistB,ref:brkDistA},
+      throttlePt:{my:thrDistB,ref:thrDistA},
+      gearApex:{my:gearApexB,ref:gearApexA},
+      lossPhase:{entry:lossFirstHalf,exit:lossSecondHalf}
+    };
+  });
+
+  // Also find worst phase losses across ALL segments (even those with small total delta)
+  const phaseLosses=segData.filter(s=>{
+    const maxPhase=Math.max(Math.abs(s.lossPhase.entry),Math.abs(s.lossPhase.exit));
+    const totalLoss=parseFloat(s.loss);
+    // Include if a phase loses >0.08s even when total delta is small
+    return maxPhase>0.08&&totalLoss<0.05;
+  }).map(s=>({name:s.name,dist:s.dist,total:s.loss,entry:s.lossPhase.entry,exit:s.lossPhase.exit}));
+
+  const venueStr=S.venue||'Unknown circuit';
+
+  // Build speed fingerprint: sequential summary of segment type + min speed for corner identification
+  const fingerprint=segData.map(s=>`${s.name}(${s.type},${s.dist},minSpd=${s.minSpd.ref}km/h,gear=${s.gearApex.ref})`).join(' → ');
+
+  return `You are an expert sim racing telemetry analyst coaching a driver in the GPVWC Formula Sprint 1 series (rFactor 2).
+
+CIRCUIT: ${venueStr}
+WARNING: The start/finish line position in this sim layout may differ from real-world or other game versions. Do NOT assume standard distance-to-corner mappings.
+Instead, identify corners by analyzing the SPEED FINGERPRINT below — match min speeds, gear numbers, and segment sequence to the known corner characteristics of this circuit. For example at Suzuka: Hairpin has the lowest min speed (~60-70km/h in gear 2), 130R is very high speed (>240km/h), Degners are medium-speed linked corners, Spoon is a long double-apex (~120-150km/h), etc.
+
+SPEED FINGERPRINT (segments in lap order, use this to identify corners):
+${fingerprint}
+
+For each observation, identify which corner(s) the segment covers based on the speed fingerprint and use the format "T8 Degner 1" or "T1 First Curve" etc. in your title and detail. If a segment covers multiple corners, name them. If you cannot confidently identify the corner, just use the segment label.
+
+CONTEXT:
+- My Lap: ${fmtT(lapTimeB)} | Reference: ${fmtT(lapTimeA)} | Delta: ${delta>=0?'+':''}${delta.toFixed(3)}s (${delta>0?'My lap SLOWER':'My lap FASTER'})
+- Track length: ~${Math.round(segData.length>0?parseFloat(segData[segData.length-1].dist.split('–')[1]):0)}m
+
+SEGMENT DATA (${segData.length} segments):
+${segData.map(s=>`${s.name} (${s.type}, ${s.dist}): totalDelta=${s.loss}s | entryPhaseLoss=${s.lossPhase.entry}s | exitPhaseLoss=${s.lossPhase.exit}s
+  entry: My=${s.entrySpd.my} Ref=${s.entrySpd.ref} | apex: My=${s.minSpd.my} Ref=${s.minSpd.ref} | exit: My=${s.exitSpd.my} Ref=${s.exitSpd.ref} | top: My=${s.maxSpd.my} Ref=${s.maxSpd.ref}
+  brakePoint: My=${s.brakePt.my}m Ref=${s.brakePt.ref}m | throttleOn: My=${s.throttlePt.my}m Ref=${s.throttlePt.ref}m
+  gearAtApex: My=${s.gearApex.my} Ref=${s.gearApex.ref} | brake%: My=${s.brakeRatio.my}% Ref=${s.brakeRatio.ref}%`).join('\n')}
+${phaseLosses.length>0?`
+HIDDEN TIME LOSSES (segments with small total delta BUT significant phase loss):
+${phaseLosses.map(p=>`${p.name} (${p.dist}): total=${p.total}s but entry=${p.entry}s exit=${p.exit}s — driver gains in one phase and loses in the other`).join('\n')}
+IMPORTANT: Include these in your observations! A segment where the driver loses 0.15s on exit but gains 0.13s on entry still has an actionable exit problem.`:''}
+
+Respond ONLY with valid JSON (no markdown, no backticks, no preamble). The JSON must have this exact structure:
+{
+  "observations": [
+    {
+      "segment": "ONLY the segment label like Seg2 or Seg9 — do NOT include type or distance in this field",
+      "distance": "distance range e.g. 830–1650m",
+      "delta": "+0.312",
+      "tag": "loss" or "focus",
+      "title": "short coaching headline with corner name, e.g. 'Late throttle exit T8 Degner 1'",
+      "detail": "2-3 sentence specific coaching advice with exact numbers. Use corner names. Reference brakePoint, throttle application, apex speed. Address driver as you. Be prescriptive.",
+      "category": "braking" or "cornering" or "throttle" or "gears" or "line" or "general"
+    }
+  ],
+  "focusPoints": "2-3 key priorities for next session using corner names, as a single concise paragraph"
+}
+
+Rules:
+- "segment" must be ONLY the segment label (e.g. "Seg2", "Seg9") — never include type or distance range in this field
+- Include segments where: (a) total delta > +0.05s, OR (b) either entry or exit phase loss > +0.08s (even if total delta is small — the driver has a hidden problem compensated by the other phase)
+- For hidden losses (b), set the delta field to the phase loss value with a note like "+0.15 (exit)"
+- Tag all as "loss" unless it's a cross-segment pattern observation (tag "focus")
+- Add max 2 "focus" observations for overall patterns — use the most relevant segment label
+- Sort by magnitude of time loss (biggest first, counting phase losses)
+- Maximum 10 observations total
+- ALWAYS use corner names/numbers in title and detail (e.g. "T8 Degner 1", "T1 First Curve", "130R")
+- "title" must be a short actionable phrase like "Brake 15m later T3 Degner" or "Slow exit T15 Spoon"
+- "category" classifies the issue type — pick the most relevant one
+- Be direct and specific — use exact km/h and meter numbers from the data`;
+}
+
+async function generateAICoaching(){
+  await loadAILimits();
+  const grid=document.getElementById('ai-grid');
+  const genRow=document.getElementById('ai-gen-row');
+  const genBtn=document.getElementById('ai-gen-btn');
+  const remaining=document.getElementById('ai-remaining');
+
+  const used=await getAIUsageToday();
+  const premium=await isPremiumUser();
+  const limit=premium?AI_PREMIUM_LIMIT:AI_DAILY_LIMIT;
+  if(used>=limit){
+    grid.innerHTML='<div class="ai-limit-inline">Daily limit reached. Try again tomorrow.</div>';
+    grid.appendChild(genRow);genRow.style.display='none';
+    return;
+  }
+
+  const prompt=buildAIPrompt();
+  if(!prompt){
+    grid.innerHTML='<div class="ai-error-inline">No analysis data. Run an analysis first.</div>';
+    grid.appendChild(genRow);
+    return;
+  }
+
+  grid.innerHTML='<div class="ai-loading-inline"><span class="spin"></span> Analysing telemetry...</div>';
+  genBtn.disabled=true;
+
+  try{
+    if(!window._callGemini)throw new Error('AI service not initialized. Reload the page.');
+    const raw=await window._callGemini(prompt);
+    const clean=raw.replace(/```json\s*/g,'').replace(/```\s*/g,'').trim();
+    const data=JSON.parse(clean);
+
+    grid.innerHTML='';
+
+    // Category tag styles
+    const catLabels={braking:'BRAKING',cornering:'CORNER',throttle:'THROTTLE',gears:'GEARS',line:'LINE',general:'PATTERN'};
+
+    // Max loss for severity scaling
+    const losses=data.observations.filter(o=>o.tag==='loss').map(o=>Math.abs(parseFloat(o.delta)||0));
+    const maxLoss=Math.max(...losses,0.1);
+
+    // Observation cards — only loss and focus
+    if(data.observations&&data.observations.length){
+      data.observations.filter(o=>o.tag==='loss'||o.tag==='focus').forEach(obs=>{
+        const card=document.createElement('div');
+        const isLoss=obs.tag==='loss';
+        const cat=obs.category||'general';
+        const catLabel=catLabels[cat]||'PATTERN';
+        const severity=isLoss?Math.min(100,Math.round(Math.abs(parseFloat(obs.delta)||0)/maxLoss*100)):0;
+        const sevCol=severity>66?'var(--red)':severity>33?'var(--orange)':'var(--yellow)';
+        const si=findSegIdx(obs.segment);
+        const segLabel=si>=0?(S.segs[si].label||('Seg'+(S.segs[si].i+1))):(obs.segment||'');
+
+        card.className='ai-card'+(isLoss?'':' ai-card-focus');
+        card.innerHTML=`
+          <div class="ai-card-top">
+            <div class="ai-card-map"><canvas width="112" height="88"></canvas></div>
+            <div class="ai-card-stripe ${obs.tag}"></div>
+            <div class="ai-card-info">
+              <div class="ai-card-row1">
+                <span class="ai-card-seg">${segLabel}</span>
+                <span class="ai-card-delta">${obs.delta?obs.delta+'s':''}</span>
+                <span class="ai-card-cat ai-cat-${cat}">${catLabel}</span>
+              </div>
+              <div class="ai-card-title">${obs.title||''}</div>
+            </div>
+            <div class="ai-card-right">
+              ${isLoss?`<div class="ai-card-severity-bar"><div class="ai-card-severity-fill" style="height:${severity}%;background:${sevCol}"></div></div>`:''}
+              ${si>=0?`<button class="ai-card-jump" data-si="${si}">View ›</button>`:''}
+            </div>
+          </div>
+          <div class="ai-card-detail">${obs.detail||''}</div>`;
+
+        // Draw mini track map
+        const mapCv=card.querySelector('.ai-card-map canvas');
+        if(mapCv&&si>=0){
+          requestAnimationFrame(()=>drawAICardTrack(mapCv,si));
+        }
+
+        // Card click to expand/collapse
+        card.addEventListener('click',e=>{
+          if(e.target.closest('.ai-card-jump'))return;
+          grid.querySelectorAll('.ai-card.expanded').forEach(c=>{if(c!==card)c.classList.remove('expanded');});
+          card.classList.toggle('expanded');
+          if(si>=0){S.activeSeg=si;renderOv();}
+        });
+        // Jump button navigates to segment detail
+        const jumpBtn=card.querySelector('.ai-card-jump');
+        if(jumpBtn){
+          jumpBtn.addEventListener('click',e=>{
+            e.stopPropagation();
+            const idx=parseInt(jumpBtn.dataset.si);
+            if(!isNaN(idx)&&idx>=0)openSeg(idx);
+          });
+        }
+        grid.appendChild(card);
+      });
+    }
+
+    // Focus points bar
+    if(data.focusPoints){
+      const fp=document.createElement('div');
+      fp.className='ai-focus-bar';
+      fp.innerHTML='<strong>📌 Next session:</strong> '+data.focusPoints;
+      grid.appendChild(fp);
+    }
+
+    // Re-add generate button
+    genRow.querySelector('button').textContent='Regenerate';
+    genRow.style.display='flex';
+    grid.appendChild(genRow);
+    genBtn.disabled=false;
+
+    await incrementAIUsage();
+    const newLeft=Math.max(0,limit-used-1);
+    remaining.textContent=newLeft+'/'+limit+' left today';
+    logSession('ai_coach',{delta:+(S.lapB.lapTime-S.lapA.lapTime).toFixed(3),segments:S.segs.length});
+
+  }catch(err){
+    grid.innerHTML='<div class="ai-error-inline">'+err.message+'</div>';
+    grid.appendChild(genRow);
+    genBtn.disabled=false;
+  }
 }
 
 // ── RESIZE ────────────────────────────────────────────────────
 let rsz;window.addEventListener('resize',()=>{clearTimeout(rsz);rsz=setTimeout(()=>{if(!S.lapA)return;const ov=document.getElementById('vov').style.display!=='none';if(ov)renderOv();else renderDet();},100);});
+</script>
+<script type="module">
+// Firebase AI Logic — modular SDK alongside compat SDK
+import{initializeApp}from'https://www.gstatic.com/firebasejs/11.8.0/firebase-app.js';
+import{getAI,getGenerativeModel,GoogleAIBackend}from'https://www.gstatic.com/firebasejs/11.8.0/firebase-ai.js';
+
+const firebaseConfig={apiKey:"AIzaSyA5acLb78DQkysVDCtveXPPjm0D1Vt-IZo",authDomain:"rf2-analyser.firebaseapp.com",projectId:"rf2-analyser",storageBucket:"rf2-analyser.firebasestorage.app",messagingSenderId:"795144003092",appId:"1:795144003092:web:2acba475aee3397e651101"};
+const app2=initializeApp(firebaseConfig,'ai-app');
+const ai=getAI(app2,{backend:new GoogleAIBackend()});
+const model=getGenerativeModel(ai,{model:'gemini-2.5-flash'});
+
+window._callGemini=async function(prompt){
+  const result=await model.generateContent(prompt);
+  return result.response.text();
+};
 </script>
 </body>
 </html>
