@@ -21,6 +21,7 @@
 .dz-hint{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
 .dz-fn{font-size:11px;color:var(--muted);max-width:270px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .dz-warn{font-size:10px;color:var(--yellow);max-width:270px;text-align:center;margin-top:4px;line-height:1.4;display:none}
+.last-ref{font-size:10px;color:var(--muted);max-width:310px;text-align:center;line-height:1.4;min-height:14px}.last-ref span{color:var(--blue)}.last-ref.loaded{color:var(--green)}.last-ref.loaded span{color:var(--green)}
 .lap-box{background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:12px;width:310px;display:none}
 .lap-box h4{font-size:10px;text-transform:uppercase;letter-spacing:2px;color:var(--muted);margin-bottom:8px}
 .lap-list{display:flex;flex-direction:column;gap:4px;max-height:160px;overflow-y:auto}
@@ -98,6 +99,12 @@ header{flex-shrink:0;height:46px;display:flex;align-items:center;gap:11px;paddin
 .det-nav{display:flex;gap:6px;margin-left:auto}
 .det-nav button{padding:5px 12px;background:none;border:1px solid var(--border);color:var(--muted);border-radius:4px;cursor:pointer;font-family:var(--font);font-size:12px;transition:all .15s}
 .det-nav button:hover{border-color:var(--text);color:var(--text)}
+.det-tools{display:flex;gap:4px;margin-left:auto;margin-right:8px}
+.det-tool{padding:4px 10px;background:none;border:1px solid var(--border);color:var(--muted);border-radius:4px;cursor:pointer;font-family:var(--font);font-size:11px;font-weight:600;transition:all .12s;display:flex;align-items:center;gap:4px}
+.det-tool:hover{border-color:var(--text);color:var(--text)}
+.det-tool.on{border-color:var(--orange);color:var(--orange);background:rgba(255,107,26,.08)}
+.det-tool svg{flex-shrink:0}
+.zoom-sel{position:absolute;top:0;bottom:0;background:rgba(255,215,64,.12);border-left:1px solid rgba(255,215,64,.6);border-right:1px solid rgba(255,215,64,.6);pointer-events:none;z-index:4;display:none}
 .det-body{flex:1;display:flex;overflow:hidden;min-height:0}
 .det-l{width:340px;flex-shrink:0;display:flex;flex-direction:column;border-right:1px solid var(--border);overflow:hidden}
 .det-r{flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:0}
@@ -234,6 +241,7 @@ header{flex-shrink:0;height:46px;display:flex;align-items:center;gap:11px;paddin
     </div>
     <div class="up-col">
       <div class="dz" id="dz-a"><input type="file" accept=".csv,.ld" id="fi-a"><div class="dz-lbl lbl-a">REFERENCE</div><div class="dz-hint">Comparison lap</div><div class="dz-fn" id="fn-a">Drop CSV / LD here or click</div><div class="dz-warn" id="warn-a"></div></div>
+      <div class="last-ref" id="last-ref"></div>
       <div class="lap-box" id="lb-a"><h4>Select reference lap</h4><div class="lap-list" id="ll-a"></div></div>
     </div>
   </div>
@@ -398,6 +406,20 @@ header{flex-shrink:0;height:46px;display:flex;align-items:center;gap:11px;paddin
         <button class="det-back" onclick="goView('ov')">← Overview</button>
         <div><div class="det-ttl" id="det-ttl">Segment —</div><div class="det-rng" id="det-rng"></div></div>
         <div class="det-dlt" id="det-dlt"></div>
+        <div class="det-tools">
+          <button class="det-tool on" id="tool-cursor" onclick="setDetTool('cursor')" title="Cursor (Alt+C)">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 2l4 10 1.5-3.5L11 7z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+            Cursor
+          </button>
+          <button class="det-tool" id="tool-zoom" onclick="setDetTool('zoom')" title="Zoom select (Alt+Z)">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 7h8M5 4v0M9 4v0M5 10v0M9 10v0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M5 3v8M9 3v8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity=".5"/></svg>
+            Zoom
+          </button>
+          <button class="det-tool" id="tool-reset-zoom" onclick="resetDetZoom()" title="Reset zoom" style="display:none">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 7a5 5 0 1 1 1.5 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M2 11V7h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Reset
+          </button>
+        </div>
         <div class="det-nav"><button onclick="navSeg(-1)">← Prev</button><button onclick="navSeg(1)">Next →</button></div>
       </div>
       <div class="det-body">
@@ -577,8 +599,33 @@ function showApp(){
   const name=currentUser.displayName||currentUser.email;
   document.getElementById('h-user').textContent=name;
   document.getElementById('ul-user').textContent='Logged in as '+name+' — Logout';
-  // Log session
-  // Log session to Firestore (only analyses are logged)
+  // Auto-load cached reference file from IndexedDB
+  loadCachedRef().then(cached=>{
+    if(!cached||!cached.content)return;
+    try{
+      const data=cached.isLd?parseLdFile(cached.content):parseMoTeC(cached.content);
+      S.csvA=data;S._refRaw=cached.content;S._refIsLd=cached.isLd;S._refFn=cached.filename;
+      document.getElementById('fn-a').textContent=cached.filename;
+      document.getElementById('dz-a').classList.add('ok-a');
+      mkLapList('a',data);
+      // Show cached indicator
+      const el=document.getElementById('last-ref');
+      if(el)el.innerHTML='✓ <span>Loaded from cache — Lap '+cached.lap+'</span>';
+    }catch(e){
+      // Cache corrupt — show hint instead
+      const el=document.getElementById('last-ref');
+      if(el)el.innerHTML='Last ref: <span>'+cached.filename+'</span> (re-upload needed)';
+    }
+  }).catch(()=>{
+    // No cache, show hint from localStorage
+    try{
+      const saved=JSON.parse(localStorage.getItem('rf2a_ref')||'null');
+      const el=document.getElementById('last-ref');
+      if(saved&&saved.filename){
+        el.innerHTML='Last ref: <span>'+saved.filename+' — Lap '+saved.lap+'</span>';
+      }
+    }catch(e){}
+  });
 }
 
 function logSession(action,extra){
@@ -618,7 +665,38 @@ function doLogout(){
 const COL_MY='#ff6b1a', COL_REF='#00bcd4';  // My Lap=orange, Ref=teal
 const S={csvA:{},csvB:{},selA:null,selB:null,lapA:null,lapB:null,
   delta:[],deltaRate:[],maxDeltaRate:0.001,segs:[],activeSeg:-1,mapMode:'delta',cursorD:null,
-  gpsA:[],gpsB:[],gpsScale:null,venue:''};
+  gpsA:[],gpsB:[],gpsScale:null,venue:'',detZoom:null,detTool:'cursor',kerbZonesA:[],kerbZonesB:[],
+  circuitMeta:null,trackCL:[]};
+
+// ── REF FILE CACHE (IndexedDB) ──────────────────────────────
+const _idb={db:null};
+function openRefDB(){
+  return new Promise((res,rej)=>{
+    if(_idb.db)return res(_idb.db);
+    const req=indexedDB.open('rf2a_refcache',1);
+    req.onupgradeneeded=e=>{e.target.result.createObjectStore('files');};
+    req.onsuccess=e=>{_idb.db=e.target.result;res(_idb.db);};
+    req.onerror=()=>rej(req.error);
+  });
+}
+async function cacheRefFile(filename,content,isLd,lap){
+  try{
+    const db=await openRefDB();
+    const tx=db.transaction('files','readwrite');
+    tx.objectStore('files').put({filename,content,isLd,lap,ts:Date.now()},'ref');
+  }catch(e){}
+}
+async function loadCachedRef(){
+  try{
+    const db=await openRefDB();
+    return new Promise(res=>{
+      const tx=db.transaction('files','readonly');
+      const req=tx.objectStore('files').get('ref');
+      req.onsuccess=()=>res(req.result||null);
+      req.onerror=()=>res(null);
+    });
+  }catch(e){return null;}
+}
 
 // ── PARSER ────────────────────────────────────────────────────
 function parseMoTeC(text){
@@ -637,7 +715,9 @@ function parseMoTeC(text){
   const ci={};
   ['Time','Distance','Ground Speed','Throttle Pos','Brake Pos','Gear','G Force Lat',
    'GPS Latitude','GPS Longitude','Lap Number','Lap Distance','Session Elapsed Time',
-   'Path Lateral','Steering Pos','Steering','Steering Filtered','Lap Start Elapsed Time','Track Edge'].forEach(n=>{const i=hdrs.indexOf(n);if(i>=0)ci[n]=i;});
+   'Path Lateral','Steering Pos','Steering','Steering Filtered','Lap Start Elapsed Time','Track Edge',
+   'Susp Pos FL','Susp Pos FR','Susp Pos RL','Susp Pos RR',
+   'Surface Type FL','Surface Type FR','Surface Type RL','Surface Type RR'].forEach(n=>{const i=hdrs.indexOf(n);if(i>=0)ci[n]=i;});
   if(!ci['Steering Pos']&&ci['Steering'])ci['Steering Pos']=ci['Steering'];
   if(!ci['Steering Filtered']&&ci['Steering Pos'])ci['Steering Filtered']=ci['Steering Pos'];
   let ds=hi+2;
@@ -834,7 +914,9 @@ function parseLdFile(buf){
   const wanted=['Time','Distance','Ground Speed','Throttle Pos','Brake Pos','Gear',
     'G Force Lat','GPS Latitude','GPS Longitude','Lap Number','Lap Distance',
     'Session Elapsed Time','Path Lateral','Steering Filtered','Steering Pos',
-    'Steering','Steering Wheel Position','Lap Start Elapsed Time','Track Edge'];
+    'Steering','Steering Wheel Position','Lap Start Elapsed Time','Track Edge',
+    'Susp Pos FL','Susp Pos FR','Susp Pos RL','Susp Pos RR',
+    'Surface Type FL','Surface Type FR','Surface Type RL','Surface Type RR'];
   channels.forEach(ch=>{
     if(wanted.includes(ch.name)&&ch.data)chanMap[ch.name]=ch;
   });
@@ -857,7 +939,7 @@ function parseLdFile(buf){
 
   // ── Build rows at base frequency ──
   // Discrete channels (must NOT interpolate - use nearest)
-  const discreteChans=new Set(['Lap Number','Gear','Beacon','Marker']);
+  const discreteChans=new Set(['Lap Number','Gear','Beacon','Marker','Surface Type FL','Surface Type FR','Surface Type RL','Surface Type RR']);
   function getSample(ch,i){
     if(!ch||!ch.data)return 0;
     if(ch.freq===baseFreq)return i<ch.data.length?ch.data[i]:0;
@@ -1024,8 +1106,12 @@ function rdFile(file,side){
   const r=new FileReader();
   r.onload=e=>{
     try{
-      const data=isLd?parseLdFile(e.target.result):parseMoTeC(e.target.result);
-      if(side==='a'){S.csvA=data;document.getElementById('fn-a').textContent=file.name;document.getElementById('dz-a').classList.add('ok-a');}
+      const rawContent=e.target.result; // keep raw for caching
+      const data=isLd?parseLdFile(rawContent):parseMoTeC(rawContent);
+      if(side==='a'){
+        S.csvA=data;S._refRaw=rawContent;S._refIsLd=isLd;S._refFn=file.name;
+        document.getElementById('fn-a').textContent=file.name;document.getElementById('dz-a').classList.add('ok-a');
+      }
       else{S.csvB=data;document.getElementById('fn-b').textContent=file.name;document.getElementById('dz-b').classList.add('ok-b');}
       // Show warnings if any
       const warnEl=document.getElementById('warn-'+side);
@@ -1043,6 +1129,17 @@ function rdFile(file,side){
 function mkLapList(side,data){
   const box=document.getElementById('lb-'+side),list=document.getElementById('ll-'+side);
   box.style.display='block';list.innerHTML='';
+  // Check if we have a remembered reference lap for side A
+  let remLap=null;
+  if(side==='a'){
+    try{
+      const saved=JSON.parse(localStorage.getItem('rf2a_ref')||'null');
+      const curFile=document.getElementById('fn-a').textContent||'';
+      if(saved&&saved.filename&&saved.filename===curFile)remLap=String(saved.lap);
+    }catch(e){}
+  }
+  let autoSelected=false;
+  const allEls=[];
   Object.keys(data).sort((a,b)=>+a-+b).forEach(ln=>{
     if(ln==='_meta')return;
     const info=data[ln];if(info.rows.length<10)return;
@@ -1050,8 +1147,18 @@ function mkLapList(side,data){
     el.innerHTML=`<span class="lap-n">Lap ${ln}</span><span class="lap-t">${fmtT(info.lapTime)}</span>`;
     el.onclick=()=>pickLap(side,ln,el);
     list.appendChild(el);
-    if((side==='a'&&!S.selA)||(side==='b'&&!S.selB))pickLap(side,ln,el);
+    allEls.push({ln,el});
+    // Auto-select remembered lap for reference
+    if(side==='a'&&remLap&&String(ln)===remLap&&!autoSelected){
+      pickLap(side,ln,el);autoSelected=true;
+    }
   });
+  // Fallback: select first lap if nothing was remembered
+  if(!autoSelected&&allEls.length>0){
+    if((side==='a'&&!S.selA)||(side==='b'&&!S.selB)){
+      pickLap(side,allEls[0].ln,allEls[0].el);
+    }
+  }
 }
 
 function pickLap(side,ln,el){
@@ -1109,7 +1216,7 @@ function startAnalysis(){
 function doStartAnalysis(){
   if(!S.lapA||!S.lapB)return;
   alignLapDistance(); // Fix distance offset between laps
-  computeDelta();mkGPS();buildSegs();
+  computeDelta();mkGPS();computeTrackEdges();buildSegs();
   document.getElementById('upload-screen').style.display='none';
   document.getElementById('app').style.display='flex';
   document.getElementById('h-ta').textContent=fmtT(S.lapA.lapTime);
@@ -1135,8 +1242,20 @@ function doStartAnalysis(){
     delta:+(S.lapB.lapTime-S.lapA.lapTime).toFixed(3),
     segments:S.segs.length
   });
+  // Remember reference lap selection for next session
+  try{
+    localStorage.setItem('rf2a_ref',JSON.stringify({filename:fnA,lap:S.selA}));
+    // Cache raw file content in IndexedDB for instant reload
+    if(S._refRaw)cacheRefFile(fnA,S._refRaw,S._refIsLd,S.selA);
+  }catch(e){}
   goView('ov');
   initAISection();
+  // Fetch circuit metadata from Gemini (async, non-blocking)
+  fetchCircuitMeta();
+}
+function renderAll(){
+  if(S.activeSeg>=0)renderDet();
+  renderMap();
 }
 
 // ── DELTA ─────────────────────────────────────────────────────
@@ -1175,6 +1294,30 @@ function computeDelta(){
       S.delta.push({d:raw[i].d,dtA:raw[i].dtA,dtB:raw[i].dtB,delta:s/c});
     }
   }else{S.delta=raw;}
+  // Trim end-of-lap spike: if delta changes rapidly in last ~30m, trim those points
+  // This artefact occurs when one lap is shorter and runs out of data
+  if(S.delta.length>50){
+    const last50=S.delta.slice(-50);
+    const body=S.delta.slice(0,-50);
+    const bodyRates=[];
+    for(let i=1;i<body.length;i++){
+      const dd=body[i].d-body[i-1].d;
+      if(dd>0)bodyRates.push(Math.abs((body[i].delta-body[i-1].delta)/dd));
+    }
+    bodyRates.sort((a,b)=>a-b);
+    const p95=bodyRates[Math.floor(bodyRates.length*0.95)]||0.001;
+    const threshold=Math.max(p95*4,0.002); // 4x the 95th percentile rate
+    let trimFrom=S.delta.length;
+    for(let i=S.delta.length-1;i>S.delta.length-50;i--){
+      const dd=S.delta[i].d-S.delta[i-1].d;
+      if(dd>0){
+        const rate=Math.abs((S.delta[i].delta-S.delta[i-1].delta)/dd);
+        if(rate>threshold)trimFrom=i;
+        else break;
+      }
+    }
+    if(trimFrom<S.delta.length)S.delta=S.delta.slice(0,trimFrom);
+  }
   // Compute delta rate of change (s per meter, smoothed over windowM)
   computeDeltaRate();
 }
@@ -1242,6 +1385,298 @@ function toXY(lat,lon,sc,W,H,mg){
   const s=Math.min((W-2*mg)/lonR,(H-2*mg)/latR);
   const ox=(W-lonR*s)/2,oy=(H-latR*s)/2;
   return{x:ox+(lon-lonMin)*s,y:H-oy-(lat-latMin)*s};
+}
+
+// ── KERB DETECTION ───────────────────────────────────────────
+function computeTrackEdges(){
+  S.kerbZonesA=[];S.kerbZonesB=[];
+
+  // Kerb detection: Surface Type channels (game-truth, type≠0 = off-tarmac surface)
+  // Falls back to suspension jerk if Surface Type not available
+  [['A',S.lapA],['B',S.lapB]].forEach(([side,lap])=>{
+    if(!lap)return;
+    const r=lap.rows;
+    // Method 1: Surface Type channels (exact from game engine)
+    const hasST=r.some(row=>(row['Surface Type FL']||0)!==0||(row['Surface Type FR']||0)!==0);
+    if(hasST){
+      // Any wheel on surface ≠ 0 means kerb/grass/gravel contact
+      const zones=[];let inZone=false,zStart=0;
+      for(let i=0;i<r.length;i++){
+        const onKerb=(r[i]['Surface Type FL']||0)!==0||(r[i]['Surface Type FR']||0)!==0
+                    ||(r[i]['Surface Type RL']||0)!==0||(r[i]['Surface Type RR']||0)!==0;
+        if(onKerb&&!inZone){inZone=true;zStart=i;}
+        if(!onKerb&&inZone){
+          inZone=false;
+          const d0=r[zStart]['Lap Distance'],d1=r[i]['Lap Distance'];
+          // Determine which side: left wheels vs right wheels
+          let lC=0,rC=0;
+          for(let j=zStart;j<i;j++){
+            if((r[j]['Surface Type FL']||0)!==0||(r[j]['Surface Type RL']||0)!==0)lC++;
+            if((r[j]['Surface Type FR']||0)!==0||(r[j]['Surface Type RR']||0)!==0)rC++;
+          }
+          zones.push({d0,d1,side:lC>rC?'L':'R'});
+        }
+      }
+      // Merge close zones
+      const merged=[];
+      for(const z of zones){
+        if(merged.length>0&&z.d0-merged[merged.length-1].d1<10&&z.side===merged[merged.length-1].side)
+          merged[merged.length-1].d1=z.d1;
+        else merged.push({...z});
+      }
+      if(side==='A')S.kerbZonesA=merged;else S.kerbZonesB=merged;
+      return;
+    }
+    // Method 2: Suspension jerk fallback (for CSV files without Surface Type)
+    if(!r.some(row=>(row['Susp Pos FL']||0)!==0))return;
+    const jerk=[];
+    for(let i=1;i<r.length;i++){
+      const suspAvg=((r[i]['Susp Pos FL']||0)+(r[i]['Susp Pos FR']||0)+(r[i]['Susp Pos RL']||0)+(r[i]['Susp Pos RR']||0))/4;
+      const prevAvg=((r[i-1]['Susp Pos FL']||0)+(r[i-1]['Susp Pos FR']||0)+(r[i-1]['Susp Pos RL']||0)+(r[i-1]['Susp Pos RR']||0))/4;
+      jerk.push(Math.abs(suspAvg-prevAvg));
+    }
+    const sorted=[...jerk].sort((a,b)=>a-b);
+    const thr=sorted[Math.floor(sorted.length*0.97)]||0.5;
+    const zones=[];let inZone=false,zStart=0;
+    for(let i=0;i<jerk.length;i++){
+      if(jerk[i]>thr&&!inZone){inZone=true;zStart=i;}
+      if((jerk[i]<=thr||i===jerk.length-1)&&inZone){
+        inZone=false;
+        if(i-zStart>=8)zones.push({d0:r[zStart]['Lap Distance'],d1:r[i]['Lap Distance'],side:'?'});
+      }
+    }
+    const merged=[];
+    for(const z of zones){
+      if(merged.length>0&&z.d0-merged[merged.length-1].d1<15)merged[merged.length-1].d1=z.d1;
+      else merged.push({...z});
+    }
+    if(side==='A')S.kerbZonesA=merged.filter(z=>(z.d1-z.d0)>=5&&(z.d1-z.d0)<=80);
+    else S.kerbZonesB=merged.filter(z=>(z.d1-z.d0)>=5&&(z.d1-z.d0)<=80);
+  });
+}
+
+// ── CIRCUIT METADATA (Gemini) ────────────────────────────────
+const CIRCUIT_CACHE_VER=1;
+function buildCircuitFingerprint(){
+  return S.segs.map(s=>{
+    const rA=S.lapA.rows;
+    const segR=rA.filter(r=>r['Lap Distance']>=s.d0&&r['Lap Distance']<=s.d1);
+    const spds=segR.map(r=>r['Ground Speed']||0);
+    const minSpd=spds.length?Math.round(Math.min(...spds)):0;
+    const maxSpd=spds.length?Math.round(Math.max(...spds)):0;
+    const gears=segR.map(r=>Math.round(r['Gear']||0));
+    const minGear=gears.length?Math.min(...gears):0;
+    return `${s.label||'Seg'+(s.i+1)}(${s.type},${Math.round(s.d0)}-${Math.round(s.d1)}m,spd=${minSpd}-${maxSpd},gear=${minGear})`;
+  }).join(' → ');
+}
+function buildCircuitPrompt(){
+  const fp=buildCircuitFingerprint();
+  const trackLen=S.lapA.rows.length>0?Math.round(S.lapA.rows[S.lapA.rows.length-1]['Lap Distance']-S.lapA.rows[0]['Lap Distance']):0;
+  return `You are a motorsport circuit analyst. Identify this circuit and provide corner metadata for a telemetry analysis tool.
+
+CIRCUIT: "${S.venue}"
+TRACK LENGTH: ~${trackLen}m
+SEGMENTS: ${S.segs.length}
+
+SPEED FINGERPRINT (segments in lap order):
+${fp}
+
+Respond ONLY with valid JSON (no markdown, no backticks, no preamble):
+{
+  "identified": true,
+  "circuitName": "full official name",
+  "corners": [
+    {
+      "name": "T1",
+      "fullName": "First Curve",
+      "type": "medium-right",
+      "segmentMatch": "Seg2",
+      "dCenter": 360,
+      "widthMul": 1.0
+    }
+  ],
+  "chicaneZones": [
+    {
+      "name": "Casio Chicane",
+      "segmentMatch": "Seg17",
+      "d0": 5380,
+      "d1": 5650
+    }
+  ],
+  "defaultTrackWidth": 12
+}
+
+RULES:
+- Match corners to segments using the SPEED FINGERPRINT (min speed + gear + sequence), NOT absolute distance
+- "type": fast-left|fast-right|medium-left|medium-right|slow-left|slow-right|hairpin-left|hairpin-right|chicane|esses|straight|kink
+- A chicane has rapid direction changes (left-right or right-left) within <150m
+- "dCenter" = your best estimate of the corner apex distance in meters from start/finish
+- "widthMul": 1.0=standard, 1.2+=wider at chicane/runoff, 0.9=narrow
+- chicaneZones: list ALL chicane-type sections. These are critical for rendering.
+- defaultTrackWidth: typical track width in meters for this circuit
+- If you cannot identify the circuit, set "identified":false and return empty arrays
+- Include esses/S-curves as separate corners, not as chicanes (esses are longer, chicanes are <150m)`;
+}
+function loadCachedCircuit(){
+  try{
+    const key='rf2a_circuit_'+S.venue.toLowerCase().replace(/[^a-z0-9]/g,'_');
+    const raw=localStorage.getItem(key);if(!raw)return null;
+    const c=JSON.parse(raw);
+    if(c.version!==CIRCUIT_CACHE_VER)return null;
+    if(Date.now()-c.timestamp>90*24*3600000)return null;
+    return c.data;
+  }catch(e){return null;}
+}
+function cacheCircuit(data){
+  try{
+    const key='rf2a_circuit_'+S.venue.toLowerCase().replace(/[^a-z0-9]/g,'_');
+    localStorage.setItem(key,JSON.stringify({version:CIRCUIT_CACHE_VER,timestamp:Date.now(),data}));
+  }catch(e){}
+}
+function validateCircuitMeta(d){
+  if(!d||typeof d!=='object')return false;
+  if(!Array.isArray(d.corners))return false;
+  if(!Array.isArray(d.chicaneZones))return false;
+  if(typeof d.defaultTrackWidth!=='number'||d.defaultTrackWidth<4||d.defaultTrackWidth>30)return false;
+  return true;
+}
+function calibrateCircuitMeta(meta){
+  // Map Gemini's segment matches to actual distance ranges from our data
+  if(!meta||!meta.corners)return meta;
+  const segMap={};
+  S.segs.forEach((s,i)=>{segMap[s.label||('Seg'+(i+1))]={d0:s.d0,d1:s.d1,i};segMap['Seg'+(i+1)]={d0:s.d0,d1:s.d1,i};});
+  meta.corners.forEach(c=>{
+    const m=segMap[c.segmentMatch];
+    if(m){c._d0=m.d0;c._d1=m.d1;c._dCenter=(m.d0+m.d1)/2;}
+    else{c._d0=c.dCenter-100;c._d1=c.dCenter+100;c._dCenter=c.dCenter;}
+  });
+  meta.chicaneZones.forEach(cz=>{
+    const m=segMap[cz.segmentMatch];
+    if(m){cz._d0=m.d0;cz._d1=m.d1;}
+    else{cz._d0=cz.d0;cz._d1=cz.d1;}
+  });
+  return meta;
+}
+async function fetchCircuitMeta(){
+  if(!S.venue||!S.segs.length)return;
+  // Check cache
+  const cached=loadCachedCircuit();
+  if(cached&&cached.identified){
+    S.circuitMeta=calibrateCircuitMeta(cached);
+    computeCenterline();
+    renderAll();
+    return;
+  }
+  // Gemini call
+  if(!window._callGemini)return;
+  try{
+    const raw=await window._callGemini(buildCircuitPrompt());
+    const clean=raw.replace(/```json|```/g,'').trim();
+    const data=JSON.parse(clean);
+    if(validateCircuitMeta(data)&&data.identified){
+      cacheCircuit(data);
+      S.circuitMeta=calibrateCircuitMeta(data);
+      computeCenterline();
+      renderAll();
+    }
+  }catch(e){console.warn('Circuit meta fetch failed:',e);}
+}
+
+// ── TRACK CENTERLINE ─────────────────────────────────────────
+function computeCenterline(){
+  S.trackCL=[];
+  const gps=S.gpsA;if(!gps||gps.length<40||!S.gpsScale)return;
+  const rows=S.lapA.rows;
+  const latSpread=S.gpsScale.latMax-S.gpsScale.latMin;
+  const lonSpread=S.gpsScale.lonMax-S.gpsScale.lonMin;
+  const trackLen=rows[rows.length-1]['Lap Distance']-rows[0]['Lap Distance'];
+  const diagGPS=Math.sqrt(latSpread*latSpread+lonSpread*lonSpread);
+  const mpu=diagGPS>0?trackLen*0.5/diagGPS:100000;
+  // Build chicane zones list
+  const chicanes=[];
+  if(S.circuitMeta&&S.circuitMeta.chicaneZones){
+    S.circuitMeta.chicaneZones.forEach(cz=>{chicanes.push({d0:cz._d0||cz.d0,d1:cz._d1||cz.d1});});
+  }
+  // Fallback chicane detection via PL rate-of-change if no Gemini data
+  if(chicanes.length===0){
+    const step2=Math.max(1,Math.floor(rows.length/400));
+    const plVals=[];
+    for(let i=0;i<rows.length;i+=step2){plVals.push({d:rows[i]['Lap Distance'],pl:rows[i]['Path Lateral']||0});}
+    for(let i=2;i<plVals.length-2;i++){
+      const dd=plVals[i+2].d-plVals[i-2].d;
+      if(dd>0){
+        const rate=Math.abs(plVals[i+2].pl-plVals[i-2].pl)/dd;
+        if(rate>0.08)plVals[i]._chic=true; // high PL rate = chicane candidate
+      }
+    }
+    let inC=false,cStart=0;
+    for(let i=0;i<plVals.length;i++){
+      if(plVals[i]._chic&&!inC){inC=true;cStart=i;}
+      if(!plVals[i]._chic&&inC){
+        inC=false;
+        const cd0=plVals[cStart].d,cd1=plVals[i].d;
+        if(cd1-cd0>20&&cd1-cd0<200)chicanes.push({d0:cd0,d1:cd1});
+      }
+    }
+  }
+  // Helper: chicane blend factor (0=use PL centerline, 1=use linear interp)
+  const RAMP=25; // 25m transition zone
+  function chicFactor(d){
+    for(const cz of chicanes){
+      if(d>=cz.d0&&d<=cz.d1)return 1.0;
+      if(d>=cz.d0-RAMP&&d<cz.d0)return(d-(cz.d0-RAMP))/RAMP;
+      if(d>cz.d1&&d<=cz.d1+RAMP)return 1.0-(d-cz.d1)/RAMP;
+    }
+    return 0.0;
+  }
+  // Step 1: compute raw PL-based centerline points
+  const step=Math.max(1,Math.floor(gps.length/800));
+  const dirSpan=Math.max(2,Math.min(8,Math.floor(gps.length/500)));
+  const rawCL=[];
+  for(let i=dirSpan;i<gps.length-dirSpan;i+=step){
+    const p0=gps[i-dirSpan],p2=gps[i+dirSpan],p1=gps[i];
+    const dx=p2.lon-p0.lon,dy=p2.lat-p0.lat;
+    const len=Math.sqrt(dx*dx+dy*dy);if(len<1e-12)continue;
+    const nx=-dy/len,ny=dx/len;
+    const d=p1.d;
+    const pl=iD(rows,d,'Path Lateral');
+    rawCL.push({d,plLat:p1.lat+pl/mpu*nx,plLon:p1.lon+pl/mpu*ny,gpsLat:p1.lat,gpsLon:p1.lon});
+  }
+  if(rawCL.length<20)return;
+  // Step 2: for chicane zones, compute linear interpolation of PL-centerline between entry/exit
+  // Find entry/exit indices for each chicane
+  const chicInterp=new Map(); // index → {lat, lon} interpolated position
+  for(const cz of chicanes){
+    // Find first and last rawCL point in/near this chicane
+    let iStart=-1,iEnd=-1;
+    for(let i=0;i<rawCL.length;i++){
+      if(rawCL[i].d>=cz.d0-RAMP&&iStart<0)iStart=i;
+      if(rawCL[i].d<=cz.d1+RAMP)iEnd=i;
+    }
+    if(iStart<0||iEnd<0||iEnd<=iStart)continue;
+    // Entry and exit centerline positions (from PL data, outside the chicane)
+    const eLat=rawCL[iStart].plLat,eLon=rawCL[iStart].plLon;
+    const xLat=rawCL[iEnd].plLat,xLon=rawCL[iEnd].plLon;
+    // Linear interpolation through the chicane
+    for(let i=iStart;i<=iEnd;i++){
+      const t=(rawCL[i].d-rawCL[iStart].d)/(rawCL[iEnd].d-rawCL[iStart].d||1);
+      chicInterp.set(i,{lat:eLat+t*(xLat-eLat),lon:eLon+t*(xLon-eLon)});
+    }
+  }
+  // Step 3: blend PL-centerline with chicane linear interpolation
+  const blended=rawCL.map((c,i)=>{
+    const cf=chicFactor(c.d);
+    if(cf<=0)return{d:c.d,lat:c.plLat,lon:c.plLon}; // pure PL centerline
+    const ci=chicInterp.get(i);
+    if(ci&&cf>=1)return{d:c.d,lat:ci.lat,lon:ci.lon}; // pure linear interp
+    if(ci)return{d:c.d,lat:c.plLat+(ci.lat-c.plLat)*cf,lon:c.plLon+(ci.lon-c.plLon)*cf}; // blend
+    return{d:c.d,lat:c.plLat,lon:c.plLon};
+  });
+  // Step 4: light smoothing (3-point, just remove per-sample noise)
+  S.trackCL=blended.map((c,i)=>{
+    if(i<1||i>blended.length-2)return c;
+    return{d:c.d,lat:(blended[i-1].lat+c.lat+blended[i+1].lat)/3,lon:(blended[i-1].lon+c.lon+blended[i+1].lon)/3};
+  });
 }
 
 // ── CORNER DETECTION — Median Speed Threshold ────────────────
@@ -1474,8 +1909,31 @@ function goView(v){
   setTimeout(()=>{if(v==='ov')renderOv();else renderDet();},40);
 }
 
-function openSeg(idx){S.activeSeg=idx;document.getElementById('tab-det').style.display='';goView('det');}
-function navSeg(dir){const n=S.activeSeg+dir;if(n>=0&&n<S.segs.length){S.activeSeg=n;renderDet();}}
+function openSeg(idx){S.activeSeg=idx;S.detZoom=null;document.getElementById('tab-det').style.display='';goView('det');}
+function navSeg(dir){const n=S.activeSeg+dir;if(n>=0&&n<S.segs.length){S.activeSeg=n;S.detZoom=null;renderDet();}}
+
+// ── ZOOM TOOL ────────────────────────────────────────────────
+function setDetTool(t){
+  S.detTool=t;
+  document.getElementById('tool-cursor').classList.toggle('on',t==='cursor');
+  document.getElementById('tool-zoom').classList.toggle('on',t==='zoom');
+  // Update cursor style on all detail trace canvases
+  const crs=t==='zoom'?'col-resize':'crosshair';
+  document.querySelectorAll('.det-r canvas').forEach(cv=>{cv.style.cursor=t==='zoom'?'col-resize':'';});
+}
+function resetDetZoom(){
+  S.detZoom=null;
+  document.getElementById('tool-reset-zoom').style.display='none';
+  setDetTool('cursor');
+  renderDet();
+}
+// Keyboard shortcuts
+document.addEventListener('keydown',e=>{
+  if(document.getElementById('vdet').style.display==='none')return;
+  if(e.altKey&&e.key==='c'){e.preventDefault();setDetTool('cursor');}
+  if(e.altKey&&e.key==='z'){e.preventDefault();setDetTool('zoom');}
+  if(e.key==='Escape'&&S.detZoom){resetDetZoom();}
+});
 
 // ── OVERVIEW ──────────────────────────────────────────────────
 function renderOv(){renderDeltaTrace();renderSpdTrace();renderMap();mkSegBar();}
@@ -1623,16 +2081,44 @@ function renderMap(){
   if(S.cursorD!==null){
     const pA=S.gpsA.find(p=>p.d>=S.cursorD)||S.gpsA[S.gpsA.length-1];
     const pB=S.gpsB.find(p=>p.d>=S.cursorD)||S.gpsB[S.gpsB.length-1];
-    if(pA){const c=xy(pA.lat,pA.lon);dot(ctx,c.x,c.y,COL_REF);}
-    if(pB){const c=xy(pB.lat,pB.lon);dot(ctx,c.x,c.y,COL_MY);}
+    if(pA){const c=xy(pA.lat,pA.lon);dotMapCursor(ctx,c.x,c.y,COL_REF);}
+    if(pB&&S.gpsB.length>10){const c=xy(pB.lat,pB.lon);dotMapCursor(ctx,c.x,c.y,COL_MY);}
   }
   // S/F
   if(S.gpsA.length){const sf=xy(S.gpsA[0].lat,S.gpsA[0].lon);ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(sf.x,sf.y,5,0,Math.PI*2);ctx.fill();}
+  // Corner labels on overview map
+  if(S.circuitMeta&&S.circuitMeta.corners){
+    ctx.font='bold 9px Rajdhani';ctx.textAlign='center';
+    const placed=[];
+    S.circuitMeta.corners.forEach(c=>{
+      if(c.type==='straight')return;
+      const cd=c._dCenter||c.dCenter;
+      const gp=S.gpsA.find(p=>p.d>=cd)||S.gpsA[S.gpsA.length-1];
+      if(!gp)return;
+      const pos=xy(gp.lat,gp.lon);
+      // Collision check: skip if too close to an existing label
+      const tooClose=placed.some(p=>Math.abs(p.x-pos.x)<30&&Math.abs(p.y-pos.y)<14);
+      if(tooClose)return;
+      placed.push(pos);
+      ctx.fillStyle='rgba(255,255,255,.45)';
+      ctx.fillText(c.name,pos.x,pos.y-8);
+    });
+  }
   mkMapLeg();
 }
 
 function dot(ctx,x,y,col){ctx.fillStyle=col;ctx.beginPath();ctx.arc(x,y,5,0,Math.PI*2);ctx.fill();ctx.strokeStyle='rgba(0,0,0,.5)';ctx.lineWidth=1.5;ctx.stroke();}
 function dotLarge(ctx,x,y,col){ctx.fillStyle=col;ctx.beginPath();ctx.arc(x,y,7,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();}
+// Highly visible cursor dot for overview map — large circle with glow
+function dotMapCursor(ctx,x,y,col){
+  ctx.save();
+  ctx.shadowColor='#ffd740';ctx.shadowBlur=14;
+  ctx.fillStyle='#ffd740';ctx.beginPath();ctx.arc(x,y,7,0,Math.PI*2);ctx.fill();
+  ctx.shadowBlur=0;
+  ctx.strokeStyle='#fff';ctx.lineWidth=2.5;ctx.beginPath();ctx.arc(x,y,7,0,Math.PI*2);ctx.stroke();
+  ctx.fillStyle=col;ctx.beginPath();ctx.arc(x,y,4,0,Math.PI*2);ctx.fill();
+  ctx.restore();
+}
 
 function mkMapLeg(){
   const cv=document.getElementById('cv-mleg');cv.width=cv.offsetWidth;
@@ -1654,14 +2140,22 @@ function setMM(m){
 function renderDet(){
   if(S.activeSeg<0||!S.segs[S.activeSeg])return;
   const seg=S.segs[S.activeSeg];
-  S.cursorD=seg.d0;
-  mmZoomLevel=1; // reset zoom for new segment
+  S.cursorD=S.detZoom?S.detZoom.d0:seg.d0;
+  if(!S.detZoom)mmZoomLevel=1; // reset zoom for new segment
   document.getElementById('det-ttl').textContent=(seg.icon||'')+' '+(seg.label||('Seg'+(S.activeSeg+1)))+' ('+(S.activeSeg+1)+'/'+S.segs.length+')';
-  document.getElementById('det-rng').textContent=Math.round(seg.d0)+'m – '+Math.round(seg.d1)+'m';
+  const zr=S.detZoom||{d0:seg.d0,d1:seg.d1};
+  document.getElementById('det-rng').textContent=Math.round(zr.d0)+'m – '+Math.round(zr.d1)+'m'+(S.detZoom?' (zoomed)':'');
   const de=document.getElementById('det-dlt');
-  de.textContent=(seg.loss>=0?'+':'')+seg.loss.toFixed(3)+'s';
-  de.style.color=seg.loss>0?'var(--red)':'var(--green)';
-  renderMiniMap();renderCtxMap();drawLatTrace();renderDetTraces();updCockpit(seg.d0);
+  const segLoss=S.detZoom?(getDelta(zr.d1)-getDelta(zr.d0)):seg.loss;
+  de.textContent=(segLoss>=0?'+':'')+segLoss.toFixed(3)+'s';
+  de.style.color=segLoss>0?'var(--red)':'var(--green)';
+  document.getElementById('tool-reset-zoom').style.display=S.detZoom?'flex':'none';
+  renderMiniMap();renderCtxMap();drawLatTrace();renderDetTraces();updCockpit(S.cursorD);
+}
+// Get effective distance range for detail traces (zoom or full segment)
+function getDetRange(){
+  const seg=S.segs[S.activeSeg];
+  return S.detZoom||{d0:seg.d0,d1:seg.d1};
 }
 
 // Mini map zoom
@@ -1701,15 +2195,21 @@ function renderMiniMap(){
   const vbw=sbw*(zf+0.1),vbh=sbh*(zf+0.1);
   // 4. Fixed scale from zoomed bbox
   const pd=16,sc2=Math.min((W-2*pd)/vbw,(H-2*pd)/vbh);
-  // 5. Pan: center on cursor if active, else segment center
+  // 5. Pan: center on cursor position when zoomed in
   let panCx=scx,panCy=scy;
   if(S.cursorD!==null&&S.cursorD>=seg.d0&&S.cursorD<=seg.d1){
     const cp=allPxA.find(p=>p.d>=S.cursorD)||segPx[segPx.length-1];
     if(cp){
-      // Blend toward cursor position (stronger at higher zoom)
-      const blend=clamp(1-zf*0.5,0.2,0.9);
-      panCx=scx+(cp.x-scx)*blend;
-      panCy=scy+(cp.y-scy)*blend;
+      if(zf<0.8){
+        // Zoomed in: center directly on cursor
+        panCx=cp.x;
+        panCy=cp.y;
+      }else{
+        // Default zoom: gentle blend toward cursor
+        const blend=clamp(1-zf*0.4,0.1,0.6);
+        panCx=scx+(cp.x-scx)*blend;
+        panCy=scy+(cp.y-scy)*blend;
+      }
     }
   }
   const offX=W/2-panCx*sc2,offY=H/2-panCy*sc2;
@@ -1740,23 +2240,87 @@ function renderMiniMap(){
     pxPerM=pxD/mD;
   }
   const carPx=Math.max(2,Math.round(carW*pxPerM));
-  // Fill between real lines
+  // Fill between real lines (subtle)
   if(sA.length>1&&sB.length>1){
-    ctx.save();ctx.globalAlpha=0.2;ctx.fillStyle='#fff';ctx.beginPath();
+    ctx.save();ctx.globalAlpha=0.08;ctx.fillStyle='#fff';ctx.beginPath();
     sA.forEach((p,i)=>{i===0?ctx.moveTo(mx(p.x),my(p.y)):ctx.lineTo(mx(p.x),my(p.y));});
     for(let i=sB.length-1;i>=0;i--)ctx.lineTo(mx(sB[i].x),my(sB[i].y));
     ctx.closePath();ctx.fill();ctx.restore();
   }
-  // Draw lines at real positions with car-width thickness
+  // Track surface from adaptive centerline (PL-based, linear interp at chicanes)
+  const defW=S.circuitMeta?S.circuitMeta.defaultTrackWidth:12;
+  const surfW=Math.max(6,Math.round(defW*pxPerM));
+  if(S.trackCL.length>5){
+    const visCL=S.trackCL.filter(p=>p.d>=D0&&p.d<=D1);
+    if(visCL.length>3){
+      const clPx=visCL.map(p=>{
+        // Width multiplier from circuit metadata
+        let wm=1.0;
+        if(S.circuitMeta&&S.circuitMeta.corners){
+          for(const c of S.circuitMeta.corners){
+            if(p.d>=(c._d0||0)&&p.d<=(c._d1||0)){wm=c.widthMul||1.0;break;}
+          }
+        }
+        const xy=toXY(p.lat,p.lon,S.gpsScale,refW,refH,refMg);
+        return{...xy,wm};
+      });
+      // Edge outline
+      ctx.strokeStyle='rgba(180,200,220,.35)';ctx.lineWidth=surfW+3;
+      ctx.lineJoin='round';ctx.lineCap='round';
+      ctx.beginPath();clPx.forEach((p,i)=>{i===0?ctx.moveTo(mx(p.x),my(p.y)):ctx.lineTo(mx(p.x),my(p.y));});ctx.stroke();
+      // Asphalt fill
+      ctx.strokeStyle='rgba(100,120,140,.30)';ctx.lineWidth=surfW;
+      ctx.beginPath();clPx.forEach((p,i)=>{i===0?ctx.moveTo(mx(p.x),my(p.y)):ctx.lineTo(mx(p.x),my(p.y));});ctx.stroke();
+    }
+  }
+  // Racing lines with car-width thickness
   ctx.strokeStyle='rgba(0,188,212,.7)';ctx.lineWidth=carPx;ctx.lineJoin='round';ctx.lineCap='round';
   ctx.beginPath();sA.forEach((p,i)=>{i===0?ctx.moveTo(mx(p.x),my(p.y)):ctx.lineTo(mx(p.x),my(p.y));});ctx.stroke();
   ctx.strokeStyle='rgba(255,107,26,.7)';ctx.lineWidth=carPx;ctx.lineJoin='round';ctx.lineCap='round';
   ctx.beginPath();sB.forEach((p,i)=>{i===0?ctx.moveTo(mx(p.x),my(p.y)):ctx.lineTo(mx(p.x),my(p.y));});ctx.stroke();
+  // Kerb zones — red/white dashes on the racing line that hit kerb
+  [[S.kerbZonesA,sA],[S.kerbZonesB,sB]].forEach(([zones,pts])=>{
+    if(!zones||!pts||pts.length<2)return;
+    zones.forEach(kz=>{
+      if(kz.d1<seg.d0||kz.d0>seg.d1)return;
+      const kPts=pts.filter(p=>p.d>=kz.d0&&p.d<=kz.d1);
+      if(kPts.length<2)return;
+      ctx.strokeStyle='rgba(255,40,40,.9)';ctx.lineWidth=Math.max(carPx+4,6);
+      ctx.lineJoin='round';ctx.lineCap='round';
+      ctx.beginPath();kPts.forEach((p,i)=>{i===0?ctx.moveTo(mx(p.x),my(p.y)):ctx.lineTo(mx(p.x),my(p.y));});ctx.stroke();
+      ctx.strokeStyle='rgba(255,255,255,.7)';ctx.lineWidth=Math.max(carPx+2,4);
+      const dash=Math.max(3,carPx*0.5);
+      ctx.setLineDash([dash,dash]);
+      ctx.beginPath();kPts.forEach((p,i)=>{i===0?ctx.moveTo(mx(p.x),my(p.y)):ctx.lineTo(mx(p.x),my(p.y));});ctx.stroke();
+      ctx.setLineDash([]);
+    });
+  });
+  // Cursor dots
   if(S.cursorD!==null){
     const ptA=allPxA.find(p=>p.d>=S.cursorD)||allPxA[allPxA.length-1];
     const ptB=allPxB.find(p=>p.d>=S.cursorD)||allPxB[allPxB.length-1];
     if(ptA)dotLarge(ctx,mx(ptA.x),my(ptA.y),COL_REF);
     if(ptB)dotLarge(ctx,mx(ptB.x),my(ptB.y),COL_MY);
+  }
+  // Corner labels from circuit metadata
+  if(S.circuitMeta&&S.circuitMeta.corners){
+    ctx.font='bold 11px Rajdhani';ctx.textAlign='center';
+    S.circuitMeta.corners.forEach(c=>{
+      const cd=c._dCenter||c.dCenter;if(cd<D0||cd>D1)return;
+      if(c.type==='straight')return;
+      const gp=S.gpsA.find(p=>p.d>=cd)||S.gpsA[S.gpsA.length-1];
+      if(!gp)return;
+      const px=toXY(gp.lat,gp.lon,S.gpsScale,refW,refH,refMg);
+      const sx=mx(px.x),sy=my(px.y);
+      if(sx<-20||sx>W+20||sy<-20||sy>H+20)return;
+      const lbl=c.name;
+      const tw=ctx.measureText(lbl).width+8;
+      ctx.fillStyle='rgba(13,17,23,.65)';
+      ctx.beginPath();
+      const rr=3;const lx=sx-tw/2,ly=sy-22;
+      ctx.roundRect(lx,ly,tw,16,rr);ctx.fill();
+      ctx.fillStyle='rgba(255,255,255,.7)';ctx.fillText(lbl,sx,sy-10);
+    });
   }
 }
 
@@ -1797,7 +2361,8 @@ function drawLatTrace(){
   const cv=document.getElementById('cv-lat');if(!cv)return;
   const wrap=cv.parentElement;cv.width=wrap.clientWidth;cv.height=wrap.clientHeight;
   const W=cv.width,H=cv.height;const ctx=cv.getContext('2d');ctx.clearRect(0,0,W,H);
-  const d0=seg.d0,d1=seg.d1;
+  const zr=getDetRange();
+  const d0=zr.d0,d1=zr.d1;
   const rA=S.lapA.rows.filter(r=>r['Lap Distance']>=d0&&r['Lap Distance']<=d1);
   const rB=S.lapB.rows.filter(r=>r['Lap Distance']>=d0&&r['Lap Distance']<=d1);
   if(rA.length<2||rB.length<2){
@@ -1851,7 +2416,7 @@ function drawLatTrace(){
 
 // Detail traces
 function renderDetTraces(){
-  const seg=S.segs[S.activeSeg];const d0=seg.d0,d1=seg.d1;
+  const zr=getDetRange();const d0=zr.d0,d1=zr.d1;
   // Diff to Ref (cumulative, line colored by delta rate)
   drawDiffRef(d0,d1);
   // Speed, Throttle, Brake, Steering
@@ -1957,10 +2522,47 @@ function drawDiffRef(d0,d1){
   addDetMouse(cv,d0,d1);
 }
 
+let _zoomDrag=null; // {startX, startD, canvas, d0, d1}
 function addDetMouse(cv,d0,d1){
+  // Apply cursor style based on tool
+  cv.style.cursor=S.detTool==='zoom'?'col-resize':'';
+  
+  cv.onmousedown=e=>{
+    if(S.detTool!=='zoom')return;
+    hideTip(); // Hide tooltip immediately when starting zoom
+    const r=cv.getBoundingClientRect();const pl=50,pr=14;const pw=cv.width-pl-pr;
+    const mx=e.clientX-r.left-pl;if(mx<0||mx>pw)return;
+    const startD=d0+(mx/pw)*(d1-d0);
+    _zoomDrag={startX:mx,startD,canvas:cv,d0,d1,pw,pl};
+    // Create/move selection overlay into THIS canvas's parent
+    let sel=document.getElementById('zoom-sel-overlay');
+    if(sel)sel.remove(); // remove from previous parent
+    sel=document.createElement('div');sel.id='zoom-sel-overlay';sel.className='zoom-sel';
+    cv.parentElement.appendChild(sel);
+    sel.style.display='block';sel.style.left=mx+pl+'px';sel.style.width='0px';
+  };
+  
   cv.onmousemove=e=>{
     const r=cv.getBoundingClientRect();const pl=50,pr=14;const pw=cv.width-pl-pr;
-    const mx=e.clientX-r.left-pl;if(mx<0||mx>pw){hideTip();return;}
+    const mx=clamp(e.clientX-r.left-pl,0,pw);
+    
+    // In zoom tool mode, always hide tooltip
+    if(S.detTool==='zoom'){hideTip();}
+    
+    if(_zoomDrag&&S.detTool==='zoom'){
+      // Draw selection rectangle
+      const sel=document.getElementById('zoom-sel-overlay');
+      if(sel){
+        const x0=Math.min(_zoomDrag.startX,mx)+pl;
+        const w=Math.abs(mx-_zoomDrag.startX);
+        sel.style.left=x0+'px';sel.style.width=w+'px';
+      }
+      return;
+    }
+    
+    // Cursor mode — normal behavior
+    if(S.detTool==='zoom')return; // Don't show tooltip in zoom mode even when not dragging
+    if(mx<0||mx>pw){hideTip();return;}
     S.cursorD=d0+(mx/pw)*(d1-d0);
     const vA=iD(S.lapA.rows,S.cursorD,'Ground Speed'),vB=iD(S.lapB.rows,S.cursorD,'Ground Speed');
     const dv=getDelta(S.cursorD);
@@ -1977,8 +2579,44 @@ function addDetMouse(cv,d0,d1){
     ]);
     updCockpit(S.cursorD);renderMiniMap();renderCtxMap();drawLatTrace();renderDetTraces();
   };
-  cv.onmouseleave=()=>{hideTip();};
+  
+  cv.onmouseup=e=>{
+    if(_zoomDrag&&S.detTool==='zoom'){
+      const r=cv.getBoundingClientRect();const pw=_zoomDrag.pw;
+      const mx=clamp(e.clientX-r.left-_zoomDrag.pl,0,pw);
+      const endD=_zoomDrag.d0+(mx/pw)*(_zoomDrag.d1-_zoomDrag.d0);
+      const selD0=Math.min(_zoomDrag.startD,endD);
+      const selD1=Math.max(_zoomDrag.startD,endD);
+      // Remove overlay
+      const sel=document.getElementById('zoom-sel-overlay');
+      if(sel)sel.style.display='none';
+      _zoomDrag=null;
+      // Only zoom if selection > 5m
+      if(selD1-selD0>5){
+        S.detZoom={d0:selD0,d1:selD1};
+        setDetTool('cursor'); // switch back to cursor after zoom
+        renderDet();
+      }
+    }
+  };
+  
+  cv.onmouseleave=()=>{
+    hideTip();
+    if(_zoomDrag){
+      const sel=document.getElementById('zoom-sel-overlay');
+      if(sel)sel.style.display='none';
+      _zoomDrag=null;
+    }
+  };
 }
+// Global mouseup to catch drag ending outside canvas
+document.addEventListener('mouseup',()=>{
+  if(_zoomDrag){
+    const sel=document.getElementById('zoom-sel-overlay');
+    if(sel)sel.style.display='none';
+    _zoomDrag=null;
+  }
+});
 
 // Cockpit
 function updCockpit(dist){
@@ -2080,7 +2718,7 @@ function hideTip(){tipEl.style.display='none';}
 function doReset(){
   document.getElementById('upload-screen').style.display='flex';
   document.getElementById('app').style.display='none';
-  Object.assign(S,{csvA:{},csvB:{},selA:null,selB:null,lapA:null,lapB:null,delta:[],deltaRate:[],maxDeltaRate:0.001,segs:[],activeSeg:-1,cursorD:null,gpsA:[],gpsB:[],gpsScale:null,mapMode:'delta',venue:''});
+  Object.assign(S,{csvA:{},csvB:{},selA:null,selB:null,lapA:null,lapB:null,delta:[],deltaRate:[],maxDeltaRate:0.001,segs:[],activeSeg:-1,cursorD:null,gpsA:[],gpsB:[],gpsScale:null,mapMode:'delta',venue:'',detZoom:null,detTool:'cursor',kerbZonesA:[],kerbZonesB:[],circuitMeta:null,trackCL:[]});
   ['a','b'].forEach(s=>{document.getElementById('lb-'+s).style.display='none';document.getElementById('dz-'+s).className='dz';document.getElementById('fn-'+s).textContent='Drop CSV / LD here or click';document.getElementById('fi-'+s).value='';document.getElementById('warn-'+s).style.display='none';});
   document.getElementById('btn-go').classList.remove('rdy');
   // Reset AI section
@@ -2244,11 +2882,49 @@ function buildAIPrompt(){
     const gearApexA=segRowsA.length>0?Math.round(segRowsA[minIdxA]['Gear']):'—';
     const gearApexB=segRowsB.length>0?Math.round(segRowsB[minIdxB]['Gear']):'—';
 
+    // Racing line analysis — Path Lateral
+    const hasPathLat=segRowsA.some(r=>(r['Path Lateral']||0)!==0);
+    let lineData=null;
+    if(hasPathLat&&segRowsA.length>5&&segRowsB.length>5){
+      // Apex lateral position (Path Lateral at min speed point)
+      const apexLatA=segRowsA[minIdxA]?segRowsA[minIdxA]['Path Lateral']:0;
+      const apexLatB=segRowsB[minIdxB]?segRowsB[minIdxB]['Path Lateral']:0;
+      // Apex distance (where min speed occurs)
+      const apexDistA=segRowsA[minIdxA]?Math.round(segRowsA[minIdxA]['Lap Distance']):0;
+      const apexDistB=segRowsB[minIdxB]?Math.round(segRowsB[minIdxB]['Lap Distance']):0;
+      // Line width used (range of Path Lateral in segment)
+      const latValsA=segRowsA.map(r=>r['Path Lateral']||0);
+      const latValsB=segRowsB.map(r=>r['Path Lateral']||0);
+      const lineWidthA=Math.max(...latValsA)-Math.min(...latValsA);
+      const lineWidthB=Math.max(...latValsB)-Math.min(...latValsB);
+      // Entry lateral position (at segment start)
+      const entryLatA=iD(rA,d0,'Path Lateral');
+      const entryLatB=iD(rB,d0,'Path Lateral');
+      // Exit lateral position (at segment end)
+      const exitLatA=iD(rA,d1,'Path Lateral');
+      const exitLatB=iD(rB,d1,'Path Lateral');
+      lineData={
+        apexLat:{my:+apexLatB.toFixed(2),ref:+apexLatA.toFixed(2)},
+        apexDist:{my:apexDistB,ref:apexDistA},
+        lineWidth:{my:+lineWidthB.toFixed(2),ref:+lineWidthA.toFixed(2)},
+        entryLat:{my:+entryLatB.toFixed(2),ref:+entryLatA.toFixed(2)},
+        exitLat:{my:+exitLatB.toFixed(2),ref:+exitLatA.toFixed(2)}
+      };
+    }
+
     // Delta at segment midpoint for within-segment progression
     const dMid=(d0+d1)/2;
     const dAtStart=getDelta(d0),dAtMid=getDelta(dMid),dAtEnd=getDelta(d1);
     const lossFirstHalf=((dAtMid-dAtStart)*1000|0)/1000;
     const lossSecondHalf=((dAtEnd-dAtMid)*1000|0)/1000;
+
+    // Kerb usage per segment
+    const kerbsMyInSeg=S.kerbZonesB.filter(k=>k.d0<d1&&k.d1>d0);
+    const kerbsRefInSeg=S.kerbZonesA.filter(k=>k.d0<d1&&k.d1>d0);
+    const kerbData={
+      my:kerbsMyInSeg.map(k=>({at:Math.round(Math.max(k.d0,d0)),side:k.side||'?'})),
+      ref:kerbsRefInSeg.map(k=>({at:Math.round(Math.max(k.d0,d0)),side:k.side||'?'}))
+    };
 
     return{
       name:seg.label||('Seg'+(seg.i+1)),type:seg.type,
@@ -2262,7 +2938,9 @@ function buildAIPrompt(){
       brakePt:{my:brkDistB,ref:brkDistA},
       throttlePt:{my:thrDistB,ref:thrDistA},
       gearApex:{my:gearApexB,ref:gearApexA},
-      lossPhase:{entry:lossFirstHalf,exit:lossSecondHalf}
+      lossPhase:{entry:lossFirstHalf,exit:lossSecondHalf},
+      line:lineData,
+      kerbs:kerbData
     };
   });
 
@@ -2276,14 +2954,26 @@ function buildAIPrompt(){
 
   const venueStr=S.venue||'Unknown circuit';
 
-  // Build speed fingerprint: sequential summary of segment type + min speed for corner identification
+  // Build speed fingerprint
   const fingerprint=segData.map(s=>`${s.name}(${s.type},${s.dist},minSpd=${s.minSpd.ref}km/h,gear=${s.gearApex.ref})`).join(' → ');
+
+  // Circuit metadata corner map (from Gemini, if available)
+  let cornerMapStr='';
+  const cornerLookup={};
+  if(S.circuitMeta&&S.circuitMeta.identified&&S.circuitMeta.corners.length>0){
+    cornerMapStr='\nCIRCUIT IDENTIFIED: '+S.circuitMeta.circuitName+'\nCORNER MAP (verified by AI analysis):\n'+
+      S.circuitMeta.corners.filter(c=>c.type!=='straight').map(c=>'  '+c.segmentMatch+' = '+c.name+' '+c.fullName+' ('+c.type+')').join('\n')+'\n'+
+      (S.circuitMeta.chicaneZones.length>0?'CHICANE ZONES: '+S.circuitMeta.chicaneZones.map(z=>z.name+' ('+z.segmentMatch+')').join(', ')+'\n':'')+
+      '\nIMPORTANT: Use the CORNER MAP above for corner names. These have been matched to segments by a separate analysis step. Trust these mappings.\n';
+    // Build lookup for per-segment corner names
+    S.circuitMeta.corners.forEach(c=>{cornerLookup[c.segmentMatch]=c.name+' '+c.fullName;});
+  }
 
   return `You are an expert sim racing telemetry analyst coaching a driver in the GPVWC Formula Sprint 1 series (rFactor 2).
 
 CIRCUIT: ${venueStr}
-WARNING: The start/finish line position in this sim layout may differ from real-world or other game versions. Do NOT assume standard distance-to-corner mappings.
-Instead, identify corners by analyzing the SPEED FINGERPRINT below — match min speeds, gear numbers, and segment sequence to the known corner characteristics of this circuit. For example at Suzuka: Hairpin has the lowest min speed (~60-70km/h in gear 2), 130R is very high speed (>240km/h), Degners are medium-speed linked corners, Spoon is a long double-apex (~120-150km/h), etc.
+${cornerMapStr?cornerMapStr:`WARNING: The start/finish line position in this sim layout may differ from real-world or other game versions. Do NOT assume standard distance-to-corner mappings.
+Instead, identify corners by analyzing the SPEED FINGERPRINT below — match min speeds, gear numbers, and segment sequence to the known corner characteristics of this circuit. For example at Suzuka: Hairpin has the lowest min speed (~60-70km/h in gear 2), 130R is very high speed (>240km/h), Degners are medium-speed linked corners, Spoon is a long double-apex (~120-150km/h), etc.`}
 
 SPEED FINGERPRINT (segments in lap order, use this to identify corners):
 ${fingerprint}
@@ -2295,10 +2985,12 @@ CONTEXT:
 - Track length: ~${Math.round(segData.length>0?parseFloat(segData[segData.length-1].dist.split('–')[1]):0)}m
 
 SEGMENT DATA (${segData.length} segments):
-${segData.map(s=>`${s.name} (${s.type}, ${s.dist}): totalDelta=${s.loss}s | entryPhaseLoss=${s.lossPhase.entry}s | exitPhaseLoss=${s.lossPhase.exit}s
+${segData.map(s=>{const cn=cornerLookup[s.name]?` / ${cornerLookup[s.name]}`:'';return `${s.name}${cn} (${s.type}, ${s.dist}): totalDelta=${s.loss}s | entryPhaseLoss=${s.lossPhase.entry}s | exitPhaseLoss=${s.lossPhase.exit}s
   entry: My=${s.entrySpd.my} Ref=${s.entrySpd.ref} | apex: My=${s.minSpd.my} Ref=${s.minSpd.ref} | exit: My=${s.exitSpd.my} Ref=${s.exitSpd.ref} | top: My=${s.maxSpd.my} Ref=${s.maxSpd.ref}
   brakePoint: My=${s.brakePt.my}m Ref=${s.brakePt.ref}m | throttleOn: My=${s.throttlePt.my}m Ref=${s.throttlePt.ref}m
-  gearAtApex: My=${s.gearApex.my} Ref=${s.gearApex.ref} | brake%: My=${s.brakeRatio.my}% Ref=${s.brakeRatio.ref}%`).join('\n')}
+  gearAtApex: My=${s.gearApex.my} Ref=${s.gearApex.ref} | brake%: My=${s.brakeRatio.my}% Ref=${s.brakeRatio.ref}%${s.line?`
+  RACING LINE: apexLateral: My=${s.line.apexLat.my}m Ref=${s.line.apexLat.ref}m (${Math.abs(s.line.apexLat.my-s.line.apexLat.ref).toFixed(2)}m diff) | apexAt: My=${s.line.apexDist.my}m Ref=${s.line.apexDist.ref}m (${s.line.apexDist.my-s.line.apexDist.ref>0?'later':'earlier'} by ${Math.abs(s.line.apexDist.my-s.line.apexDist.ref)}m) | lineWidth: My=${s.line.lineWidth.my}m Ref=${s.line.lineWidth.ref}m | entryLat: My=${s.line.entryLat.my}m Ref=${s.line.entryLat.ref}m | exitLat: My=${s.line.exitLat.my}m Ref=${s.line.exitLat.ref}m`:''}${(s.kerbs.my.length||s.kerbs.ref.length)?`
+  KERBS: My=${s.kerbs.my.length?s.kerbs.my.map(k=>k.at+'m('+k.side+')').join(','):'none'} | Ref=${s.kerbs.ref.length?s.kerbs.ref.map(k=>k.at+'m('+k.side+')').join(','):'none'}`:''}`}).join('\n')}
 ${phaseLosses.length>0?`
 HIDDEN TIME LOSSES (segments with small total delta BUT significant phase loss):
 ${phaseLosses.map(p=>`${p.name} (${p.dist}): total=${p.total}s but entry=${p.entry}s exit=${p.exit}s — driver gains in one phase and loses in the other`).join('\n')}
@@ -2330,7 +3022,8 @@ Rules:
 - Maximum 10 observations total
 - ALWAYS use corner names/numbers in title and detail (e.g. "T8 Degner 1", "T1 First Curve", "130R")
 - "title" must be a short actionable phrase like "Brake 15m later T3 Degner" or "Slow exit T15 Spoon"
-- "category" classifies the issue type — pick the most relevant one
+- "category" classifies the issue type — pick the most relevant one. Use "line" when the racing line difference is the primary cause (apex offset >0.5m, apex timing >5m difference, or significantly different line width)
+- When RACING LINE data is present, analyze it: a later apex (higher apexDist) combined with lower apex speed often means the driver is turning in too late. A wider lineWidth means the driver uses more track. Different entryLat/exitLat shows different positioning. Mention specific lateral offset differences in meters.
 - Be direct and specific — use exact km/h and meter numbers from the data`;
 }
 
