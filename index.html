@@ -2278,23 +2278,46 @@ function renderMiniMap(){
   ctx.beginPath();sA.forEach((p,i)=>{i===0?ctx.moveTo(mx(p.x),my(p.y)):ctx.lineTo(mx(p.x),my(p.y));});ctx.stroke();
   ctx.strokeStyle='rgba(255,107,26,.7)';ctx.lineWidth=carPx;ctx.lineJoin='round';ctx.lineCap='round';
   ctx.beginPath();sB.forEach((p,i)=>{i===0?ctx.moveTo(mx(p.x),my(p.y)):ctx.lineTo(mx(p.x),my(p.y));});ctx.stroke();
-  // Kerb zones — red/white dashes on the racing line that hit kerb
-  [[S.kerbZonesA,sA],[S.kerbZonesB,sB]].forEach(([zones,pts])=>{
+  // Kerb zones — colored per lap, magenta where both laps are on kerb
+  // Build a quick lookup: is distance d inside any zone of the other lap?
+  function _inOtherKerb(d,otherZones){
+    if(!otherZones)return false;
+    return otherZones.some(z=>d>=z.d0&&d<=z.d1);
+  }
+  function _drawKerbZones(zones,pts,baseCol,otherZones){
     if(!zones||!pts||pts.length<2)return;
     zones.forEach(kz=>{
       if(kz.d1<seg.d0||kz.d0>seg.d1)return;
       const kPts=pts.filter(p=>p.d>=kz.d0&&p.d<=kz.d1);
       if(kPts.length<2)return;
-      ctx.strokeStyle='rgba(255,40,40,.9)';ctx.lineWidth=Math.max(carPx+4,6);
-      ctx.lineJoin='round';ctx.lineCap='round';
-      ctx.beginPath();kPts.forEach((p,i)=>{i===0?ctx.moveTo(mx(p.x),my(p.y)):ctx.lineTo(mx(p.x),my(p.y));});ctx.stroke();
-      ctx.strokeStyle='rgba(255,255,255,.7)';ctx.lineWidth=Math.max(carPx+2,4);
-      const dash=Math.max(3,carPx*0.5);
-      ctx.setLineDash([dash,dash]);
-      ctx.beginPath();kPts.forEach((p,i)=>{i===0?ctx.moveTo(mx(p.x),my(p.y)):ctx.lineTo(mx(p.x),my(p.y));});ctx.stroke();
-      ctx.setLineDash([]);
+      // Draw in runs: magenta where both on kerb, baseCol where solo
+      let run=[],runBoth=null;
+      function flush(){
+        if(run.length<2){run=[];return;}
+        const col=runBoth?'rgba(118,255,3,.95)':baseCol;
+        ctx.strokeStyle=col;ctx.lineWidth=Math.max(carPx+4,6);
+        ctx.lineJoin='round';ctx.lineCap='round';
+        ctx.beginPath();run.forEach((p,i)=>{i===0?ctx.moveTo(mx(p.x),my(p.y)):ctx.lineTo(mx(p.x),my(p.y));});ctx.stroke();
+        ctx.strokeStyle='rgba(255,255,255,.75)';ctx.lineWidth=Math.max(carPx+2,4);
+        const dash=Math.max(3,carPx*0.5);
+        ctx.setLineDash([dash,dash]);
+        ctx.beginPath();run.forEach((p,i)=>{i===0?ctx.moveTo(mx(p.x),my(p.y)):ctx.lineTo(mx(p.x),my(p.y));});ctx.stroke();
+        ctx.setLineDash([]);
+        run=[];
+      }
+      kPts.forEach(p=>{
+        const ib=_inOtherKerb(p.d,otherZones);
+        if(run.length>0&&ib!==runBoth)flush();
+        runBoth=ib;
+        run.push(p);
+      });
+      flush();
     });
-  });
+  }
+  // Ref (A) kerbs: teal/white, magenta where My is also on kerb
+  _drawKerbZones(S.kerbZonesA,sA,'rgba(0,188,212,.9)',S.kerbZonesB);
+  // My (B) kerbs: orange/white, magenta where Ref is also on kerb
+  _drawKerbZones(S.kerbZonesB,sB,'rgba(255,107,26,.9)',S.kerbZonesA);
   // Cursor dots
   if(S.cursorD!==null){
     const ptA=allPxA.find(p=>p.d>=S.cursorD)||allPxA[allPxA.length-1];
@@ -2716,10 +2739,37 @@ function hideTip(){tipEl.style.display='none';}
 
 // ── RESET ─────────────────────────────────────────────────────
 function doReset(){
+  // Preserve reference data
+  const keepCsvA=S.csvA;const keepSelA=S.selA;
+  const keepRefRaw=S._refRaw;const keepRefIsLd=S._refIsLd;const keepRefFn=S._refFn;
   document.getElementById('upload-screen').style.display='flex';
   document.getElementById('app').style.display='none';
   Object.assign(S,{csvA:{},csvB:{},selA:null,selB:null,lapA:null,lapB:null,delta:[],deltaRate:[],maxDeltaRate:0.001,segs:[],activeSeg:-1,cursorD:null,gpsA:[],gpsB:[],gpsScale:null,mapMode:'delta',venue:'',detZoom:null,detTool:'cursor',kerbZonesA:[],kerbZonesB:[],circuitMeta:null,trackCL:[]});
-  ['a','b'].forEach(s=>{document.getElementById('lb-'+s).style.display='none';document.getElementById('dz-'+s).className='dz';document.getElementById('fn-'+s).textContent='Drop CSV / LD here or click';document.getElementById('fi-'+s).value='';document.getElementById('warn-'+s).style.display='none';});
+  // Clear My Lap side
+  document.getElementById('dz-b').className='dz';
+  document.getElementById('fn-b').textContent='Drop CSV / LD here or click';
+  document.getElementById('fi-b').value='';document.getElementById('warn-b').style.display='none';
+  document.getElementById('lb-b').style.display='none';
+  // Restore reference if available
+  if(keepCsvA&&keepSelA&&Object.keys(keepCsvA).filter(k=>k!=='_meta').length>0){
+    S.csvA=keepCsvA;S.selA=keepSelA;S._refRaw=keepRefRaw;S._refIsLd=keepRefIsLd;S._refFn=keepRefFn;
+    document.getElementById('fn-a').textContent=keepRefFn||'Reference loaded';
+    document.getElementById('dz-a').className='dz ok-a';
+    document.getElementById('warn-a').style.display='none';
+    mkLapList('a',keepCsvA);
+    // Re-select the previously selected lap
+    document.querySelectorAll('#ll-a .lap-item').forEach(el=>{
+      const txt=el.querySelector('.lap-n');
+      if(txt&&txt.textContent==='Lap '+keepSelA)pickLap('a',keepSelA,el);
+    });
+    const refEl=document.getElementById('last-ref');
+    if(refEl){refEl.innerHTML='✓ <span>Reference retained — Lap '+keepSelA+'</span>';refEl.className='last-ref loaded';}
+  }else{
+    document.getElementById('dz-a').className='dz';
+    document.getElementById('fn-a').textContent='Drop CSV / LD here or click';
+    document.getElementById('fi-a').value='';document.getElementById('warn-a').style.display='none';
+    document.getElementById('lb-a').style.display='none';
+  }
   document.getElementById('btn-go').classList.remove('rdy');
   // Reset AI section
   const grid=document.getElementById('ai-grid');
